@@ -3274,9 +3274,9 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 
 		if (bDeltaMoveNearlyZero && bSameNavLocation)
 		{
-			if (const INavigationDataInterface * NavData = GetNavData())
+			if (const INavigationDataInterface * ProjectionNavData = GetNavData())
 			{
-				if (!NavData->IsNodeRefValid(CachedNavLocation.NodeRef))
+				if (!ProjectionNavData->IsNodeRefValid(CachedNavLocation.NodeRef))
 				{
 					CachedNavLocation.NodeRef = INVALID_NAVNODEREF;
 					bSameNavLocation = false;

@@ -147,10 +147,10 @@ void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, flo
 	}
 	else
 	{
-		const ANavigationData* NavData = NavSys->GetNavDataForProps(Controller->GetNavAgentPropertiesRef());
-		if (NavData)
+		const ANavigationData* ProjectionNavData = NavSys->GetNavDataForProps(Controller->GetNavAgentPropertiesRef());
+		if (ProjectionNavData)
 		{
-			FPathFindingQuery Query(Controller, *NavData, Controller->GetNavAgentLocation(), GoalLocation);
+			FPathFindingQuery Query(Controller, *ProjectionNavData, Controller->GetNavAgentLocation(), GoalLocation);
 			FPathFindingResult Result = NavSys->FindPathSync(Query);
 			if (Result.IsSuccessful())
 			{
