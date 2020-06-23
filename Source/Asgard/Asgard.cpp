@@ -2,5 +2,22 @@
 
 #include "Asgard.h"
 #include "Modules/ModuleManager.h"
+#include "Modules/ModuleInterface.h"
 
-IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, Asgard, "Asgard" );
+DEFINE_LOG_CATEGORY(Asgard);
+
+void FAsgardModule::StartupModule()
+{
+#if (ENGINE_MINOR_VERSION >= 21)    
+    FString ShaderDirectory = FPaths::Combine(FPaths::ProjectDir(), TEXT("Shaders"));
+    AddShaderSourceDirectoryMapping("/Project", ShaderDirectory);
+#endif
+    UE_LOG(Asgard, Warning, TEXT("Asgard: Module started"));
+}
+
+void FAsgardModule::ShutdownModule()
+{
+    UE_LOG(Asgard, Warning, TEXT("Asgard: Module shutdown"));
+}
+
+IMPLEMENT_PRIMARY_GAME_MODULE(FAsgardModule, Asgard, "Asgard" );
