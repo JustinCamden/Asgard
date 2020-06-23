@@ -17,6 +17,9 @@ void FAsgardModule::StartupModule()
 
 void FAsgardModule::ShutdownModule()
 {
+#if (ENGINE_MINOR_VERSION >= 21)    
+    ResetAllShaderSourceDirectoryMappings();
+#endif
     UE_LOG(Asgard, Warning, TEXT("Asgard: Module shutdown"));
 }
 
