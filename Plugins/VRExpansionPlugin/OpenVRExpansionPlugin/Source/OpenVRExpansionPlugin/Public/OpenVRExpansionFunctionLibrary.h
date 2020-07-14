@@ -579,124 +579,124 @@ public:
 #endif
 
 	// Gets whether an HMD device is connected, this is an expanded version for SteamVR
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetOpenVRHMDType"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true", DisplayName = "GetOpenVRHMDType"))
 		static EBPOpenVRHMDDeviceType GetOpenVRHMDType();
 
 	// Gets what type of controller is plugged in
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetOpenVRControllerType"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true", DisplayName = "GetOpenVRControllerType"))
 		static EBPOpenVRControllerDeviceType GetOpenVRControllerType();
 
 	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true"))
 	static bool IsOpenVRDeviceConnected(int32 DeviceIndex);
 
 	// Get what type a specific openVR device index is
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true"))
 	static EBPOpenVRTrackedDeviceClass GetOpenVRDeviceType(int32 DeviceIndex);
 
 	// Get a list of all currently tracked devices and their types, index in the array is their device index
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true"))
 	static void GetOpenVRDevices(TArray<EBPOpenVRTrackedDeviceClass> &FoundDevices);
 
 	// Get a list of all currently tracked devices of a specific type
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true"))
 	static void GetOpenVRDevicesByType(EBPOpenVRTrackedDeviceClass TypeToRetreive, TArray<int32> &FoundIndexs);
 
 	// Gets the model / texture of a SteamVR Device, can use to fill procedural mesh components or just get the texture of them to apply to a pre-made model.
 	// If the render model name override is empty then the render model name will be automatically retrieved from SteamVR and RenderModelNameOut will be filled with it.
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", DisplayName = "GetVRDeviceModelAndTexture", ExpandEnumAsExecs = "Result", AdvancedDisplay = "OverrideDeviceID"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true", WorldContext = "WorldContextObject", DisplayName = "GetVRDeviceModelAndTexture", ExpandEnumAsExecs = "Result", AdvancedDisplay = "OverrideDeviceID"))
 	static UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, FString RenderModelNameOverride, FString & RenderModelNameOut, EBPOpenVRTrackedDeviceClass DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result, int32 OverrideDeviceID = -1);
 	
 	// Gets a String device property
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyString", ExpandEnumAsExecs = "Result"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true", DisplayName = "GetVRDevicePropertyString", ExpandEnumAsExecs = "Result"))
 	static void GetVRDevicePropertyString(EVRDeviceProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue, EBPOVRResultSwitch & Result);
 
 	// Gets a Bool device property
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyBool", ExpandEnumAsExecs = "Result"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true", DisplayName = "GetVRDevicePropertyBool", ExpandEnumAsExecs = "Result"))
 	static void GetVRDevicePropertyBool(EVRDeviceProperty_Bool PropertyToRetrieve, int32 DeviceID, bool & BoolValue, EBPOVRResultSwitch & Result);
 
 	// Gets a Float device property
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyFloat", ExpandEnumAsExecs = "Result"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true", DisplayName = "GetVRDevicePropertyFloat", ExpandEnumAsExecs = "Result"))
 	static void GetVRDevicePropertyFloat(EVRDeviceProperty_Float PropertyToRetrieve, int32 DeviceID, float & FloatValue, EBPOVRResultSwitch & Result);
 
 	// Gets a Int32 device property
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyInt32", ExpandEnumAsExecs = "Result"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true", DisplayName = "GetVRDevicePropertyInt32", ExpandEnumAsExecs = "Result"))
 	static void GetVRDevicePropertyInt32(EVRDeviceProperty_Int32 PropertyToRetrieve, int32 DeviceID, int32 & IntValue, EBPOVRResultSwitch & Result);
 
 	// Gets a UInt64 device property as a string (Blueprints do not support int64)
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyUInt64", ExpandEnumAsExecs = "Result"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true", DisplayName = "GetVRDevicePropertyUInt64", ExpandEnumAsExecs = "Result"))
 	static void GetVRDevicePropertyUInt64(EVRDeviceProperty_UInt64 PropertyToRetrieve, int32 DeviceID, FString & UInt64Value, EBPOVRResultSwitch & Result);
 
 	// Gets a Matrix34 device property as a Transform
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyMatrix34AsTransform", ExpandEnumAsExecs = "Result"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bAutoIgnoreActor = "true", DisplayName = "GetVRDevicePropertyMatrix34AsTransform", ExpandEnumAsExecs = "Result"))
 	static void GetVRDevicePropertyMatrix34AsTransform(EVRDeviceProperty_Matrix34 PropertyToRetrieve, int32 DeviceID, FTransform & TransformValue, EBPOVRResultSwitch & Result);
 
 	// VR Camera options
 
 	// Returns if there is a VR camera and what its pixel height / width is
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "HasVRCamera"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bAutoIgnoreActor = "true", DisplayName = "HasVRCamera"))
 	static bool HasVRCamera(EOpenVRCameraFrameType FrameType, int32 &Width, int32 &Height);
 
 	// Gets a screen cap from the HMD camera if there is one
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "GetVRCameraFrame", ExpandEnumAsExecs = "Result"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bAutoIgnoreActor = "true", DisplayName = "GetVRCameraFrame", ExpandEnumAsExecs = "Result"))
 	static void GetVRCameraFrame(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EOpenVRCameraFrameType FrameType, EBPOVRResultSwitch & Result, UTexture2D * TargetRenderTarget = nullptr);
 
 	// Create Camera Render Target, automatically pulls the correct texture size and format
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "CreateCameraTexture2D", ExpandEnumAsExecs = "Result"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bAutoIgnoreActor = "true", DisplayName = "CreateCameraTexture2D", ExpandEnumAsExecs = "Result"))
 	static UTexture2D * CreateCameraTexture2D(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EOpenVRCameraFrameType FrameType, EBPOVRResultSwitch & Result);
 
 	// Acquire the vr camera for access (wakes it up) and returns a handle to use for functions regarding it (MUST RELEASE CAMERA WHEN DONE)
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "AcquireVRCamera", ExpandEnumAsExecs = "Result"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bAutoIgnoreActor = "true", DisplayName = "AcquireVRCamera", ExpandEnumAsExecs = "Result"))
 	static void AcquireVRCamera(FBPOpenVRCameraHandle & CameraHandle, EBPOVRResultSwitch & Result);
 
 	// Releases the vr camera from access - you MUST call this when done with the camera
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "ReleaseVRCamera", ExpandEnumAsExecs = "Result"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bAutoIgnoreActor = "true", DisplayName = "ReleaseVRCamera", ExpandEnumAsExecs = "Result"))
 	static void ReleaseVRCamera(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EBPOVRResultSwitch & Result);
 
 	// Checks if a camera handle is valid
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "IsValid"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bAutoIgnoreActor = "true", DisplayName = "IsValid"))
 	static bool IsValid(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle);
 
 	// VR compositor
 
 	// Override the standard skybox texture in steamVR - LatLong format - need to call ClearSkyboxOverride when finished
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bAutoIgnoreActor = "true"))
 		static bool SetSkyboxOverride_LatLong(UTexture2D * LatLongSkybox);
 
 	// Override the standard skybox texture in steamVR - LatLong stereo pair - need to call ClearSkyboxOverride when finished
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bAutoIgnoreActor = "true"))
 		static bool SetSkyboxOverride_LatLongStereoPair(UTexture2D * LatLongSkyboxL, UTexture2D * LatLongSkyboxR);
 
 	// Override the standard skybox texture in steamVR - 6 cardinal textures - need to call ClearSkyboxOverride when finished
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bAutoIgnoreActor = "true"))
 		static bool SetSkyboxOverride(UTexture * tFront, UTexture2D * tBack, UTexture * tLeft, UTexture * tRight, UTexture * tTop, UTexture * tBottom);
 
 	// Remove skybox override in steamVR
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bAutoIgnoreActor = "true"))
 		static bool ClearSkyboxOverride();
 
 	/** Fades the view on the HMD to the specified color. The fade will take fSeconds, and the color values are between
 	* 0.0 and 1.0. This color is faded on top of the scene based on the alpha parameter. Removing the fade color instantly
 	* would be FadeToColor( 0.0, 0.0, 0.0, 0.0, 0.0 ).  Values are in un-premultiplied alpha space. */
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bAutoIgnoreActor = "true"))
 		static bool FadeHMDToColor(float fSeconds, FColor Color, bool bBackground = false);
 
 
 	/** Get current fade color value. */
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bAutoIgnoreActor = "true"))
 		static bool GetCurrentHMDFadeColor(FColor & ColorOut, bool bBackground = false);
 
 	/** Fading the Grid in or out in fSeconds */
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bAutoIgnoreActor = "true"))
 		static bool FadeVRGrid(float fSeconds, bool bFadeIn);
 
 	/** Get current alpha value of grid. */
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bAutoIgnoreActor = "true"))
 		static bool GetCurrentVRGridAlpha(float & VRGridAlpha);
 
 	// Sets whether the compositor is allows to render or not (reverts to base compositor / grid when active)
 	// Useful to place players out of the app during frame drops/hitches/loading and into the vr skybox.
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bAutoIgnoreActor = "true"))
 		static bool SetSuspendRendering(bool bSuspendRendering);
 
 	static vr::Texture_t CreateOpenVRTexture_t(UTexture * Texture)

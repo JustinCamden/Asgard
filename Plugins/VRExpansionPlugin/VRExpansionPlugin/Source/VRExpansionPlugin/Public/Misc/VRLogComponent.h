@@ -220,19 +220,19 @@ public:
 		int32 MaxStoredMessages;
 
 	// Sets the console input text, can be used to clear the console or enter full or partial commands
-	UFUNCTION(BlueprintCallable, Category = "VRLogComponent|Console", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRLogComponent|Console", meta = (bAutoIgnoreActor = "true"))
 		void SetConsoleText(FString Text);
 
 	// Sends a key to the console - Console considers Released as final, flashes the cursor
-	UFUNCTION(BlueprintCallable, Category = "VRLogComponent|Console", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRLogComponent|Console", meta = (bAutoIgnoreActor = "true"))
 		void SendKeyEventToConsole(FKey Key, EInputEvent KeyEvent);
 
 	// Sends text to the console - Optionally returns at the end to "enter" the text, end flashes the cursor
-	UFUNCTION(BlueprintCallable, Category = "VRLogComponent|Console", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRLogComponent|Console", meta = (bAutoIgnoreActor = "true"))
 		void AppendTextToConsole(FString Text, bool bReturnAtEnd = false);
 
 	// Draw the console to a render target 2D
-	UFUNCTION(BlueprintCallable, Category = "VRLogComponent|Console", meta = (bIgnoreSelf = "true", DisplayName = "DrawConsoleToCanvasRenderTarget2D"))
+	UFUNCTION(BlueprintCallable, Category = "VRLogComponent|Console", meta = (bAutoIgnoreActor = "true", DisplayName = "DrawConsoleToCanvasRenderTarget2D"))
 		bool DrawConsoleToRenderTarget2D(EBPVRConsoleDrawType DrawType, UTextureRenderTarget2D * Texture, float ScrollOffset, bool bForceDraw);
 
 

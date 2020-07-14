@@ -38,7 +38,7 @@ public:
 	UVRGripScriptBase(const FObjectInitializer& ObjectInitializer);
 
 	// Gets the first grip script of the specified type in this object, do NOT call this on tick, save out and store the reference given
-	UFUNCTION(BlueprintCallable, Category = "VRGripScript|Functions", meta = (WorldContext = "WorldContextObject", bIgnoreSelf = "true", DisplayName = "GetGripScriptByClass", ExpandEnumAsExecs = "Result"))
+	UFUNCTION(BlueprintCallable, Category = "VRGripScript|Functions", meta = (WorldContext = "WorldContextObject", bAutoIgnoreActor = "true", DisplayName = "GetGripScriptByClass", ExpandEnumAsExecs = "Result"))
 		static UVRGripScriptBase* GetGripScriptByClass(UObject* WorldContextObject, TSubclassOf<UVRGripScriptBase> GripScriptClass, EBPVRResultSwitch& Result);
 
 	bool IsSupportedForNetworking() const override

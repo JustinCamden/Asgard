@@ -280,7 +280,7 @@ public:
 		FVROnControllerGripSignature OnSecondaryGripRemoved;
 
 	// Gets the hand enum
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "HandType", CompactNodeTitle = "HandType"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true", DisplayName = "HandType", CompactNodeTitle = "HandType"))
 		void GetHandType(EControllerHand& Hand);
 
 	// The component to use for basing the grip off of instead of the motion controller
