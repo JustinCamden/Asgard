@@ -315,7 +315,6 @@ public:
 
 			SplineMeshComponent->SetStartAndEnd(StartLoc, StartTangent, EndLoc, EndTangent, true);
 		}
-
 	}
 
 	/**
