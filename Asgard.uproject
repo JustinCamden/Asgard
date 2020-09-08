@@ -26,6 +26,11 @@
 			"Name": "SplineTwistCorrect",
 			"Enabled": true,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/3ab1bb3146c34d4098fd2e564f6bd62c"
+		},
+		{
+			"Name": "SMSystem",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/9d8db9962594400988f8ddd3fb83cd88"
 		}
 	]
 }

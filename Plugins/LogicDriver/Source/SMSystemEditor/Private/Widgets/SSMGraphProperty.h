@@ -1,0 +1,80 @@
+// Copyright Recursoft LLC 2019-2020. All Rights Reserved.
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/SCompoundWidget.h"
+#include "SKismetLinearExpression.h"
+#include "SMNodeWidgetInfo.h"
+#include "SGraphPin.h"
+
+
+class SMSYSTEMEDITOR_API SSMGraphProperty_Base : public SCompoundWidget
+{
+	SLATE_BEGIN_ARGS(SSMGraphProperty_Base)
+		: _GraphNode(nullptr)
+	{
+	}
+
+	/** Horizontal alignment of content in the area allotted to the SBox by its parent */
+	SLATE_ARGUMENT(class UEdGraphNode*, GraphNode)
+	SLATE_END_ARGS()
+	
+	SSMGraphProperty_Base();
+
+	virtual void Finalize() {}
+	virtual void Refresh() {}
+	void OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+	void OnMouseLeave(const FPointerEvent& MouseEvent) override;
+	FReply OnMouseButtonDoubleClick(const FGeometry& InMyGeometry, const FPointerEvent& InMouseEvent) override;
+
+protected:
+	TSharedPtr<SGraphNode> FindParentGraphNode() const;
+	UEdGraphPin* FindResultPin() const;
+	
+protected:
+	UEdGraphNode* GraphNode;
+};
+
+class SMSYSTEMEDITOR_API SSMGraphProperty : public SSMGraphProperty_Base
+{
+	SLATE_BEGIN_ARGS(SSMGraphProperty)
+		: _GraphNode(nullptr)
+		, _WidgetInfo(nullptr)
+	{
+	}
+
+	/** Horizontal alignment of content in the area allotted to the SBox by its parent */
+	SLATE_ARGUMENT(class UEdGraphNode*, GraphNode)
+	SLATE_ARGUMENT(const FSMTextDisplayWidgetInfo*, WidgetInfo)
+	SLATE_END_ARGS()
+	
+	SSMGraphProperty();
+	~SSMGraphProperty();
+	
+	void Construct(const FArguments& InArgs);
+	void Finalize() override;
+	
+	FReply OnDragOver(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
+	void OnDragLeave(const FDragDropEvent& DragDropEvent) override;
+	FReply OnDrop(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
+
+	void Refresh() override;
+	
+protected:
+	/** Validates that the drag drop event is allowed for this class. */
+	bool IsDragDropValid(const FDragDropEvent& DragDropEvent) const;
+
+	FSlateColor GetBackgroundColor() const;
+	void HandleExpressionChange(class UEdGraphPin* ResultPin);
+
+protected:
+	FDelegateHandle RefreshHandle;
+	
+	TSharedPtr<SKismetLinearExpression> ExpressionWidget;
+	TSharedPtr<STextBlock> TextBlockWidget;
+	TSharedPtr<SGraphPin> InputPin;
+	TSharedPtr<SHorizontalBox> ValueDisplay;
+	FSMTextDisplayWidgetInfo WidgetInfo;
+	bool bIsValidDragDrop;
+};
