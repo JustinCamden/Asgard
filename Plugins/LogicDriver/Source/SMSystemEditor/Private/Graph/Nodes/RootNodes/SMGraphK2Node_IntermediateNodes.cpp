@@ -5,9 +5,9 @@
 #include "Graph/SMStateGraph.h"
 #include "Graph/SMConduitGraph.h"
 #include "Graph/SMIntermediateGraph.h"
-#include "SMBlueprint.h"
+#include "Blueprints/SMBlueprint.h"
 #include "BlueprintActionFilter.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 
 
 #define LOCTEXT_NAMESPACE "SMIntermediateEntryNode"
@@ -75,7 +75,8 @@ FText USMGraphK2Node_IntermediateStateMachineStartNode::GetNodeTitle(ENodeTitleT
 FText USMGraphK2Node_IntermediateStateMachineStartNode::GetTooltipText() const
 {
 	return LOCTEXT("IntermediateStateMachineStartTooltip", "Called when the immediate owning state machine blueprint is starting.\
- If this is part of a reference then it will be called when the reference starts.");
+ \nIf this is part of a reference then it will be called when the reference starts. If this is for a state machine node\
+\nthen it will only be called when the top level state machine starts.");
 }
 
 FText USMGraphK2Node_IntermediateStateMachineStartNode::GetMenuCategory() const
@@ -141,7 +142,8 @@ FText USMGraphK2Node_IntermediateStateMachineStopNode::GetNodeTitle(ENodeTitleTy
 FText USMGraphK2Node_IntermediateStateMachineStopNode::GetTooltipText() const
 {
 	return LOCTEXT("IntermediateStateMachineStopTooltip", "Called when the immediate owning state machine blueprint has stopped.\
- If this is part of a reference then it will be called when the reference stops.");
+ \nIf this is part of a reference then it will be called when the reference stops. If this is for a state machine node\
+\nthen it will only be called when the top level state machine stops.");
 }
 
 FText USMGraphK2Node_IntermediateStateMachineStopNode::GetMenuCategory() const

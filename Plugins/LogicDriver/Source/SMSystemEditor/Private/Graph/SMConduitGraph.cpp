@@ -1,13 +1,12 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "SMConduitGraph.h"
 #include "EdGraph/EdGraphPin.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 
 
 USMConduitGraph::USMConduitGraph(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+	: Super(ObjectInitializer), ResultNode(nullptr)
 {
-
 }
 
 bool USMConduitGraph::HasAnyLogicConnections() const

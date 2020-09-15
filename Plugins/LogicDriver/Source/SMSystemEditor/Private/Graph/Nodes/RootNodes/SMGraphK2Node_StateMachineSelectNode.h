@@ -12,16 +12,16 @@ class USMGraphK2Node_StateMachineSelectNode : public USMGraphK2Node_RootNode
 	GENERATED_UCLASS_BODY()
 
 	//~ Begin UEdGraphNode Interface
-	void AllocateDefaultPins() override;
-	FLinearColor GetNodeTitleColor() const override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	bool IsNodePure() const override { return true; }
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual void AllocateDefaultPins() override;
+	virtual FLinearColor GetNodeTitleColor() const override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual bool IsNodePure() const override { return true; }
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
 	//~ End UEdGraphNode Interface
 
 	// USMGraphK2Node_Base
-	bool CanCollapseNode() const override { return false; }
-	bool CanCollapseToFunctionOrMacro() const override { return false; }
+	virtual bool CanCollapseNode() const override { return false; }
+	virtual bool CanCollapseToFunctionOrMacro() const override { return false; }
 	// ~USMGraphK2Node_Base
 };

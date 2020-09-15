@@ -20,17 +20,17 @@ public:
 
 	void Construct(const FArguments& InArgs, USMGraphNode_TransitionEdge* InNode);
 	// SGraphNode interface
-	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
-	void MoveTo(const FVector2D& NewPosition, FNodeSet& NodeFilter) override;
-	bool RequiresSecondPassLayout() const override;
-	void PerformSecondPassLayout(const TMap< UObject*, TSharedRef<SNode> >& NodeToWidgetLookup) const override;
-	void UpdateGraphNode() override;
-	TSharedPtr<SToolTip> GetComplexTooltip() override;
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
+	virtual void MoveTo(const FVector2D& NewPosition, FNodeSet& NodeFilter) override;
+	virtual bool RequiresSecondPassLayout() const override;
+	virtual void PerformSecondPassLayout(const TMap< UObject*, TSharedRef<SNode> >& NodeToWidgetLookup) const override;
+	virtual void UpdateGraphNode() override;
+	virtual TSharedPtr<SToolTip> GetComplexTooltip() override;
 	// ~SGraphNode interface
 
 	// SWidget interface
-	void OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
-	void OnMouseLeave(const FPointerEvent& MouseEvent) override;
+	virtual void OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+	virtual void OnMouseLeave(const FPointerEvent& MouseEvent) override;
 	// End of SWidget interface
 
 	// Calculate position for multiple nodes to be placed between a start and end point, by providing this nodes index and max expected nodes 

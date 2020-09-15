@@ -4,10 +4,11 @@
 #include "Graph/Schema/SMGraphK2Schema.h"
 #include "Graph/SMTransitionGraph.h"
 #include "Graph/SMConduitGraph.h"
+#include "Graph/SMStateGraph.h"
 #include "BlueprintNodeSpawner.h"
 #include "BlueprintActionDatabaseRegistrar.h"
-#include "SMBlueprintEditorUtils.h"
-#include "SMBlueprint.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
+#include "Blueprints/SMBlueprint.h"
 
 
 #define LOCTEXT_NAMESPACE "SMTransitionShutdownNode"
@@ -35,19 +36,20 @@ FText USMGraphK2Node_TransitionShutdownNode::GetMenuCategory() const
 
 FText USMGraphK2Node_TransitionShutdownNode::GetNodeTitle(ENodeTitleType::Type TitleType) const
 {
-	const bool IsConduit = Cast<USMConduitGraph>(FSMBlueprintEditorUtils::FindTopLevelOwningGraph(GetGraph())) != nullptr;
+	const bool IsTransition = Cast<USMTransitionGraph>(FSMBlueprintEditorUtils::FindTopLevelOwningGraph(GetGraph())) != nullptr;
 
 	if ((TitleType == ENodeTitleType::MenuTitle || TitleType == ENodeTitleType::ListView))
 	{
-		return IsConduit ? LOCTEXT("AddConduitShutdownEvent", "Add Event On Conduit Shutdown") : LOCTEXT("AddTransitionShutdownEvent", "Add Event On Transition Shutdown");
+		return LOCTEXT("AddTransitionShutdownEvent", "Add Event On Transition Shutdown");
 	}
 
-	return FText::FromString(IsConduit ? TEXT("On Conduit Shutdown") : TEXT("On Transition Shutdown"));
+	return FText::FromString(IsTransition ? TEXT("On Transition Shutdown") : TEXT("On Node Shutdown (With Transitions)"));
 }
 
 FText USMGraphK2Node_TransitionShutdownNode::GetTooltipText() const
 {
-	return LOCTEXT("TransitionShutdownNodeTooltip", "Called once the state leading to this node has exited.");
+	return LOCTEXT("TransitionShutdownNodeTooltip", "For transitions and conduits: Called after the state leading to this node has run OnStateEnd but before it has called its shutdown sequence.\
+\nFor states: Called after OnStateEnd and after transitions are shutdown.");
 }
 
 void USMGraphK2Node_TransitionShutdownNode::GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const
@@ -75,7 +77,7 @@ bool USMGraphK2Node_TransitionShutdownNode::IsActionFilteredOut(FBlueprintAction
 	for (UEdGraph* Graph : Filter.Context.Graphs)
 	{
 		// Only works on transition and conduit graphs.
-		if (!Graph->IsA<USMTransitionGraph>() && !Graph->IsA<USMConduitGraph>())
+		if (!Graph->IsA<USMTransitionGraph>() && !Graph->IsA<USMConduitGraph>() && !Graph->IsA<USMStateGraph>())
 		{
 			return true;
 		}
@@ -86,7 +88,7 @@ bool USMGraphK2Node_TransitionShutdownNode::IsActionFilteredOut(FBlueprintAction
 
 bool USMGraphK2Node_TransitionShutdownNode::IsCompatibleWithGraph(UEdGraph const* Graph) const
 {
-	return Graph->IsA<USMTransitionGraph>() || Graph->IsA<USMConduitGraph>();
+	return Graph->IsA<USMTransitionGraph>() || Graph->IsA<USMConduitGraph>() || Graph->IsA<USMStateGraph>();
 }
 
 #undef LOCTEXT_NAMESPACE

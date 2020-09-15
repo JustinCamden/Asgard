@@ -11,6 +11,7 @@
 
 struct FSMTransition;
 class USMGraphNode_StateNodeBase;
+class USMTransitionGraph;
 
 UCLASS()
 class SMSYSTEMEDITOR_API USMGraphNode_TransitionEdge : public USMGraphNode_Base
@@ -18,9 +19,7 @@ class SMSYSTEMEDITOR_API USMGraphNode_TransitionEdge : public USMGraphNode_Base
 	GENERATED_UCLASS_BODY()
 
 	/**
-	 * The instance which contains the delegate during run-time.
-	 * This - The state machine instance.
-	 * Context - The context of the state machine.
+	 * The instance which owns the delegate the transition should bind to.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Event Trigger")
 	TEnumAsByte<ESMDelegateOwner> DelegateOwnerInstance;
@@ -71,31 +70,34 @@ class SMSYSTEMEDITOR_API USMGraphNode_TransitionEdge : public USMGraphNode_Base
 	void CopyFrom(const USMGraphNode_TransitionEdge& Transition);
 	
 	//~ Begin UEdGraphNode Interface
-	void AllocateDefaultPins() override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	void PinConnectionListChanged(UEdGraphPin* Pin) override;
-	void PostPlacedNewNode() override;
-	void PrepareForCopying() override;
-	void PostPasteNode() override;
-	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	void DestroyNode() override;
-	bool CanDuplicateNode() const override { return true; }
+	virtual void AllocateDefaultPins() override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual void PinConnectionListChanged(UEdGraphPin* Pin) override;
+	virtual void PostPlacedNewNode() override;
+	virtual void PrepareForCopying() override;
+	virtual void PostPasteNode() override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void DestroyNode() override;
+	virtual bool CanDuplicateNode() const override { return true; }
 	//~ End UEdGraphNode Interface
 
 	// USMGraphNode_Base
-	void ImportDeprecatedProperties() override;
-	void PlaceDefaultInstanceNodes() override;
-	FName GetFriendlyNodeName() const override { return "Transition"; }
-	FLinearColor GetActiveBackgroundColor() const override;
-	UClass* GetNodeClass() const override { return TransitionClass; }
-	void SetNodeClass(UClass* Class) override;
-	bool SupportsPropertyGraphs() const override { return false; }
+	virtual void ResetDebugState() override;
+	virtual void UpdateTime(float DeltaTime) override;
+	virtual void ImportDeprecatedProperties() override;
+	virtual void PlaceDefaultInstanceNodes() override;
+	virtual FName GetFriendlyNodeName() const override { return "Transition"; }
+	virtual FLinearColor GetBackgroundColor() const override;
+	virtual FLinearColor GetActiveBackgroundColor() const override;
+	virtual UClass* GetNodeClass() const override { return TransitionClass; }
+	virtual void SetNodeClass(UClass* Class) override;
+	virtual bool SupportsPropertyGraphs() const override { return false; }
+	virtual float GetMaxDebugTime() const override;
+	virtual void PreCompile(FSMKismetCompilerContext& CompilerContext) override;
 	// ~USMGraphNode_Base
 	
 	FLinearColor GetTransitionColor(bool bIsHovered) const;
 
-	float GetMaxDebugTime() const override;
-	
 	void CreateBoundGraph();
 	void SetBoundGraph(UEdGraph* Graph);
 	
@@ -107,14 +109,20 @@ class SMSYSTEMEDITOR_API USMGraphNode_TransitionEdge : public USMGraphNode_Base
 	
 	FString GetTransitionName() const;
 	void CreateConnections(USMGraphNode_StateNodeBase* Start, USMGraphNode_StateNodeBase* End);
+
+	/** Checks if there is any possibility of transitioning. */
 	bool PossibleToTransition() const;
 
-	USMGraphNode_StateNodeBase* GetStartNode() const;
-	USMGraphNode_StateNodeBase* GetEndNode() const;
+	USMTransitionGraph* GetTransitionGraph() const;
+	
+	USMGraphNode_StateNodeBase* GetFromState() const;
+	USMGraphNode_StateNodeBase* GetToState() const;
 
 	bool ShouldRunParallel() const;
-
+	bool WasEvaluating() const { return bWasEvaluating; }
 protected:
-	FLinearColor Internal_GetBackgroundColor() const override;
+	virtual FLinearColor Internal_GetBackgroundColor() const override;
 	void SetDefaultsWhenPlaced();
+
+	bool bWasEvaluating;
 };

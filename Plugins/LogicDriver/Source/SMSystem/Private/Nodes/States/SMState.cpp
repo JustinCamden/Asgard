@@ -5,12 +5,7 @@
 #include "SMTransition.h"
 #include "SMStateInstance.h"
 #include "SMUtils.h"
-
-#define GRAPH_PROPERTY_EVAL_ON_START 0
-#define GRAPH_PROPERTY_EVAL_ON_UPDATE 1
-#define GRAPH_PROPERTY_EVAL_ON_END 2
-#define GRAPH_PROPERTY_EVAL_ON_ROOT_SM_START 3
-#define GRAPH_PROPERTY_EVAL_ON_ROOT_SM_STOP 4
+#include "SMLogging.h"
 
 void FSMState_Base::UpdateReadStates()
 {
@@ -71,6 +66,16 @@ UClass* FSMState_Base::GetDefaultNodeInstanceClass() const
 	return USMStateInstance::StaticClass();
 }
 
+void FSMState_Base::ExecuteInitializeNodes()
+{
+	if (CanExecuteGraphProperties(GRAPH_PROPERTY_EVAL_ON_INITIALIZE))
+	{
+		ExecuteGraphProperties();
+	}
+
+	Super::ExecuteInitializeNodes();
+}
+
 void FSMState_Base::GetAllTransitionChains(TArray<FSMTransition*>& OutTransitions) const
 {
 	for (FSMTransition* Transition : OutgoingTransitions)
@@ -89,6 +94,8 @@ bool FSMState_Base::StartState()
 	{
 		return false;
 	}
+
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMState_Base::StartState"), STAT_SMState_Start, STATGROUP_LogicDriver);
 
 	if (CanExecuteGraphProperties(GRAPH_PROPERTY_EVAL_ON_START))
 	{
@@ -114,6 +121,8 @@ bool FSMState_Base::UpdateState(float DeltaSeconds)
 		return false;
 	}
 
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMState_Base::UpdateState"), STAT_SMState_Update, STATGROUP_LogicDriver);
+	
 	TimeInState += DeltaSeconds;
 	UpdateReadStates();
 	if (CanExecuteGraphProperties(GRAPH_PROPERTY_EVAL_ON_UPDATE))
@@ -135,6 +144,8 @@ bool FSMState_Base::EndState(float DeltaSeconds, const FSMTransition* Transition
 	{
 		return false;
 	}
+
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMState_Base::EndState"), STAT_SMState_End, STATGROUP_LogicDriver);
 
 	SetTransitionToTake(TransitionToTake);
 
@@ -191,6 +202,8 @@ void FSMState_Base::OnStoppedByInstance(USMInstance* Instance)
 
 bool FSMState_Base::GetValidTransition(TArray<TArray<FSMTransition*>>& Transitions)
 {
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMState_Base::GetValidTransition"), STAT_SMState_GetValidTransition, STATGROUP_LogicDriver);
+	
 	for(FSMTransition* Transition : OutgoingTransitions)
 	{
 		TArray<FSMTransition*> Chain;
@@ -255,6 +268,8 @@ bool FSMState_Base::CanExecuteGraphProperties(uint32 OnEvent) const
 			return StateInstance->bEvalGraphsOnUpdate;
 		case GRAPH_PROPERTY_EVAL_ON_END:
 			return StateInstance->bEvalGraphsOnEnd;
+		case GRAPH_PROPERTY_EVAL_ON_INITIALIZE:
+			return StateInstance->bEvalGraphsOnInitialize;
 		case GRAPH_PROPERTY_EVAL_ON_ROOT_SM_START:
 			return StateInstance->bEvalGraphsOnRootStateMachineStart;
 		case GRAPH_PROPERTY_EVAL_ON_ROOT_SM_STOP:
@@ -272,7 +287,7 @@ bool FSMState_Base::CanEvaluateTransitionsOnTick() const
 		/* Check if any immediate outgoing transition has just completed from an event before returning false. */
 		for (FSMTransition* Transition : OutgoingTransitions)
 		{
-			if (Transition->bCanEnterTransitionFromEvent)
+			if (Transition->CanTransitionFromEvent())
 			{
 				return true;
 			}
@@ -309,17 +324,14 @@ void FSMState_Base::AddIncomingTransition(FSMTransition* Transition)
 
 void FSMState_Base::InitializeTransitions()
 {
+	ExecuteInitializeNodes();
+	
 	TArray<FSMTransition*> AllTransitions;
 	GetAllTransitionChains(AllTransitions);
 	
 	for(FSMTransition* Transition : AllTransitions)
 	{
-		USMUtils::ExecuteGraphFunctions(Transition->TransitionInitializedGraphEvaluators);
-		
-		if (Transition->GetToState()->IsConduit())
-		{
-			USMUtils::ExecuteGraphFunctions(((FSMConduit*)Transition->GetToState())->TransitionInitializedGraphEvaluators);
-		}
+		Transition->ExecuteInitializeNodes();
 	}
 }
 
@@ -330,13 +342,10 @@ void FSMState_Base::ShutdownTransitions()
 
 	for (FSMTransition* Transition : AllTransitions)
 	{
-		USMUtils::ExecuteGraphFunctions(Transition->TransitionShutdownGraphEvaluators);
-
-		if (Transition->GetToState()->IsConduit())
-		{
-			USMUtils::ExecuteGraphFunctions(((FSMConduit*)Transition->GetToState())->TransitionShutdownGraphEvaluators);
-		}
+		Transition->ExecuteShutdownNodes();
 	}
+
+	ExecuteShutdownNodes();
 }
 
 
@@ -359,6 +368,32 @@ void FSMState::Reset()
 	EndStateGraphEvaluator.Reset();
 }
 
+void FSMState::ExecuteInitializeNodes()
+{
+	Super::ExecuteInitializeNodes();
+
+	for (USMNodeInstance* StackInstance : StackNodeInstances)
+	{
+		if (USMStateInstance* StateInstance = Cast<USMStateInstance>(StackInstance))
+		{
+			StateInstance->OnStateInitialized();
+		}
+	}
+}
+
+void FSMState::ExecuteShutdownNodes()
+{
+	Super::ExecuteShutdownNodes();
+
+	for (USMNodeInstance* StackInstance : StackNodeInstances)
+	{
+		if (USMStateInstance* StateInstance = Cast<USMStateInstance>(StackInstance))
+		{
+			StateInstance->OnStateShutdown();
+		}
+	}
+}
+
 bool FSMState::StartState()
 {
 	if(!Super::StartState())
@@ -369,6 +404,14 @@ bool FSMState::StartState()
 	if (CanExecuteLogic())
 	{
 		Execute();
+
+		for (USMNodeInstance* StackInstance : StackNodeInstances)
+		{
+			if (USMStateInstance* StateInstance = Cast<USMStateInstance>(StackInstance))
+			{
+				StateInstance->OnStateBegin();
+			}
+		}
 	}
 
 	return true;
@@ -384,6 +427,14 @@ bool FSMState::UpdateState(float DeltaSeconds)
 	if (CanExecuteLogic())
 	{
 		UpdateStateGraphEvaluator.Execute((void*)&DeltaSeconds);
+
+		for (USMNodeInstance* StackInstance : StackNodeInstances)
+		{
+			if (USMStateInstance* StateInstance = Cast<USMStateInstance>(StackInstance))
+			{
+				StateInstance->OnStateUpdate(DeltaSeconds);
+			}
+		}
 	}
 
 	return true;
@@ -399,7 +450,38 @@ bool FSMState::EndState(float DeltaSeconds, const FSMTransition* TransitionToTak
 	if (CanExecuteLogic())
 	{
 		EndStateGraphEvaluator.Execute();
+		for (USMNodeInstance* StackInstance : StackNodeInstances)
+		{
+			if (USMStateInstance* StateInstance = Cast<USMStateInstance>(StackInstance))
+			{
+				StateInstance->OnStateEnd();
+			}
+		}
 	}
 
 	return true;
+}
+
+void FSMState::OnStartedByInstance(USMInstance* Instance)
+{
+	Super::OnStartedByInstance(Instance);
+	for (USMNodeInstance* StackInstance : StackNodeInstances)
+	{
+		if (USMStateInstance* StateInstance = Cast<USMStateInstance>(StackInstance))
+		{
+			StateInstance->OnRootStateMachineStart();
+		}
+	}
+}
+
+void FSMState::OnStoppedByInstance(USMInstance* Instance)
+{
+	Super::OnStoppedByInstance(Instance);
+	for (USMNodeInstance* StackInstance : StackNodeInstances)
+	{
+		if (USMStateInstance* StateInstance = Cast<USMStateInstance>(StackInstance))
+		{
+			StateInstance->OnRootStateMachineStop();
+		}
+	}
 }

@@ -22,6 +22,9 @@
 
 USMInstance::USMInstance() : Super()
 {
+	bCanEvaluateTransitionsLocally = true;
+	bCanTakeTransitionsLocally = true;
+	bCanExecuteStateLogic = true;
 }
 
 bool USMInstance::IsTickable() const
@@ -62,7 +65,7 @@ UWorld* USMInstance::GetTickableGameObjectWorld() const
 
 TStatId USMInstance::GetStatId() const
 {
-	RETURN_QUICK_DECLARE_CYCLE_STAT(USMInstance, STATGROUP_SMSystem);
+	RETURN_QUICK_DECLARE_CYCLE_STAT(SMInstance, STATGROUP_LogicDriver);
 }
 
 void USMInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -82,6 +85,8 @@ void USMInstance::BeginDestroy()
 
 void USMInstance::Initialize(UObject* Context)
 {
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMInstance::Initialize"), STAT_SMInstance_Initialize, STATGROUP_LogicDriver);
+	
 	Shutdown();
 
 	// Context is what the instance will run under. This also sets the World the state machine operates in.
@@ -146,6 +151,8 @@ void USMInstance::Start()
 		return;
 	}
 
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMInstance::Start"), STAT_SMInstance_Start, STATGROUP_LogicDriver);
+
 	DoStart();
 
 	R_bHasStarted = true;
@@ -199,6 +206,8 @@ void USMInstance::Internal_Update(float DeltaSeconds)
 		return Update(DeltaSeconds);
 	}
 
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMInstance::Update"), STAT_SMInstance_Update, STATGROUP_LogicDriver);
+
 	OnStateMachineUpdate(DeltaSeconds);
 	OnStateMachineUpdatedEvent.Broadcast(this, DeltaSeconds);
 
@@ -221,6 +230,16 @@ void USMInstance::Internal_Update(float DeltaSeconds)
 	}
 }
 
+void USMInstance::Internal_EventCleanup(const FGuid& NodeGuid)
+{
+	if (FSMTransition* Transition = GetTransitionByGuid(NodeGuid))
+	{
+		// Auto-bound events will set bIsEvaluating to true primarily for debugging. However if two events fire at the exact same time
+		// it won't be set to false unless this cleanup method is run.
+		Transition->bIsEvaluating = false;
+	}
+}
+
 void USMInstance::Stop()
 {
 	if (!CheckIsInitialized())
@@ -234,6 +253,8 @@ void USMInstance::Stop()
 		return;
 	}
 
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMInstance::Stop"), STAT_SMInstance_Stop, STATGROUP_LogicDriver);
+	
 	RootStateMachine.EndState(0.f);
 
 	// Let states run any shutdown logic.
@@ -256,6 +277,8 @@ void USMInstance::Shutdown()
 		return;
 	}
 
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMInstance::Shutdown"), STAT_SMInstance_Shutdown, STATGROUP_LogicDriver);
+	
 	if (IsActive())
 	{
 		Stop();
@@ -282,6 +305,8 @@ void USMInstance::StartWithNewContext(UObject* Context)
 
 void USMInstance::EvaluateTransitions()
 {
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMInstance::EvaluateTransitions"), STAT_SMInstance_EvaluateTransitions, STATGROUP_LogicDriver);
+	
 	USMInstance* StateMachineInstance = GetMasterReferenceOwner();
 	check(StateMachineInstance);
 	StateMachineInstance->GetRootStateMachine().ProcessStates(0.f, true);
@@ -573,6 +598,30 @@ USMInstance* USMInstance::GetReferencedInstanceByGuid(const FGuid& Guid) const
 	return nullptr;
 }
 
+USMStateInstance_Base* USMInstance::GetStateInstanceByGuid(const FGuid& Guid) const
+{
+	EXECUTE_ON_MASTER(GetStateInstanceByGuid(Guid));
+
+	if (FSMState_Base* const* State = GuidStateMap.Find(Guid))
+	{
+		return Cast<USMStateInstance_Base>((*State)->GetNodeInstance());
+	}
+
+	return nullptr;
+}
+
+USMTransitionInstance* USMInstance::GetTransitionInstanceByGuid(const FGuid& Guid) const
+{
+	EXECUTE_ON_MASTER(GetTransitionInstanceByGuid(Guid));
+
+	if (FSMTransition* const* Transition = GuidTransitionMap.Find(Guid))
+	{
+		return Cast<USMTransitionInstance>((*Transition)->GetNodeInstance());
+	}
+
+	return nullptr;
+}
+
 FSMState_Base* USMInstance::GetStateByGuid(const FGuid& Guid) const
 {
 	if(FSMState_Base* const* State = GuidStateMap.Find(Guid))
@@ -719,6 +768,14 @@ USMInstance* USMInstance::GetMasterReferenceOwner()
 void USMInstance::NotifyTransitionTaken(const FSMTransition& Transition)
 {
 	const FSMTransitionInfo TransitionInfo(Transition);
+
+#if WITH_EDITORONLY_DATA
+	if (IsLoggingEnabled() && bLogTransitionTaken)
+	{
+		LOG_INFO(TEXT("[%s] Transition taken: %s"), *GetName(), *TransitionInfo.ToString());
+	}
+#endif
+	
 	OnStateMachineTransitionTaken(TransitionInfo);
 	OnStateMachineTransitionTakenEvent.Broadcast(this, TransitionInfo);
 }
@@ -727,6 +784,14 @@ void USMInstance::NotifyStateChange(FSMState_Base* ToState, FSMState_Base* FromS
 {
 	const FSMStateInfo ToStateInfo(ToState ? *ToState : FSMState_Base());
 	const FSMStateInfo FromStateInfo(FromState ? *FromState : FSMState_Base());
+
+#if WITH_EDITORONLY_DATA
+	if (IsLoggingEnabled() && bLogStateChange)
+	{
+		LOG_INFO(TEXT("[%s] State change: from %s to %s"), *GetName(), *FromStateInfo.ToString(), *ToStateInfo.ToString());
+	}
+#endif
+	
 	OnStateMachineStateChanged(ToStateInfo, FromStateInfo);
 	OnStateMachineStateChangedEvent.Broadcast(this, ToStateInfo, FromStateInfo);
 }
@@ -804,6 +869,8 @@ void USMInstance::SetAllowStateLogic(bool bAllow)
 
 void USMInstance::Tick_Implementation(float DeltaTime)
 {
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMInstance::TotalTick"), STAT_SMInstance_TotalTick, STATGROUP_LogicDriver);
+	
 	if (!CanEverTick() || bIsTicking)
 	{
 		return;
@@ -815,6 +882,8 @@ void USMInstance::Tick_Implementation(float DeltaTime)
 	{
 		return;
 	}
+
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMInstance::Tick"), STAT_SMInstance_Tick, STATGROUP_LogicDriver);
 
 	// Signal we are ticking in case an update tries to call tick manually.
 	bIsTicking = true;

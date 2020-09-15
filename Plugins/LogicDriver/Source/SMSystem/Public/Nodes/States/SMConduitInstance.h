@@ -18,17 +18,28 @@ public:
 	USMConduitInstance();
 
 	/** Is this conduit allowed to switch states. */
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Node Instance")
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Logic Driver|Node Instance")
 	bool CanEnterTransition() const;
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Node Instance")
+	/** Called once this conduit has evaluated to true and has been taken. */
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Logic Driver|Node Instance")
 	void OnConduitEntered();
-	
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Node Instance")
-	void OnConduitInitialized();
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Node Instance")
+	/** Called after the state leading to this node is initialized but before OnStateBegin. */
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Logic Driver|Node Instance")
+	void OnConduitInitialized();
+	
+	/** Called after the state leading to this node has run OnStateEnd but before it has called its shutdown sequence. */
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Logic Driver|Node Instance")
 	void OnConduitShutdown();
+
+	/** Sets whether this node is allowed to evaluate or not. */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
+	void SetCanEvaluate(bool bValue);
+
+	/** Check whether this node is allowed to evaluate. */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
+	bool GetCanEvaluate() const;
 	
 protected:
 	/* Override in native classes to implement. Never call these directly. */
@@ -49,5 +60,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = Conduit)
 	bool bEvalWithTransitions;
 
+	/**
+	 * If this conduit is allowed to evaluate.
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = Conduit, meta=(DisplayName = "Can Evaluate"))
+	bool bCanEvaluate;
 };
 

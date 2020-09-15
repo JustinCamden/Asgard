@@ -3,7 +3,7 @@
 #include "Graph/Nodes/PropertyNodes/SMGraphK2Node_TextPropertyNode.h"
 #include "Graph/SMTextPropertyGraph.h"
 #include "K2Node_FormatText.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 
 
 #define LOCTEXT_NAMESPACE "SMTextPropertyGraphSchema"

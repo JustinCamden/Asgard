@@ -28,18 +28,30 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Logic Driver|Node Instance")
 	void OnEndStateReached();
 
+	/** Called before OnStateBegin and before transitions are initialized. */
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Logic Driver|Node Instance")
+	void OnStateInitialized();
+
+	/** Called after OnStateEnd and after transitions are shutdown. */
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Logic Driver|Node Instance")
+	void OnStateShutdown();
+	
 	/** Retrieve all contained state instances defined within the state machine graph this instance represents. These can be States, State Machines, and Conduits. */
-	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
 	void GetAllStateInstances(TArray<USMStateInstance_Base*>& StateInstances) const;
 
 	// USMNodeInstance
 	/** Special handling to retrieve the real FSM node in the event this is a state machine reference. */
-	const FSMNode_Base* GetOwningNodeContainer() const override;
+	virtual const FSMNode_Base* GetOwningNodeContainer() const override;
 	// ~USMNodeInstance
 	
 protected:
+	/* Override in native classes to implement. Never call these directly. */
+	
 	virtual void OnStateMachineCompleted_Implementation() {}
 	virtual void OnEndStateReached_Implementation() {}
+	virtual void OnStateInitialized_Implementation() {}
+	virtual void OnStateShutdown_Implementation() {}
 
 #if WITH_EDITORONLY_DATA
 public:
@@ -54,7 +66,7 @@ public:
 	/**
 	 * Wait for an end state to be hit before evaluating transitions or being considered an end state itself.
 	 */
-	UPROPERTY(EditDefaultsOnly, Category = "State Machines")
+	UPROPERTY(EditDefaultsOnly, Category = "State Machine")
 	bool bWaitForEndState;
 	
 	/**
@@ -62,14 +74,14 @@ public:
 	 * When false the current state is cleared on end and the initial state used on start.
 	 * References will inherit this behavior.
 	 */
-	UPROPERTY(EditDefaultsOnly, Category = "State Machines")
+	UPROPERTY(EditDefaultsOnly, Category = "State Machine")
 	bool bReuseCurrentState;
 
 	/**
 	 * Do not reuse if in an end state.
 	 * References will inherit this behavior.
 	 */
-	UPROPERTY(EditDefaultsOnly, Category = "State Machines", meta = (EditCondition = "bReuseCurrentState"))
+	UPROPERTY(EditDefaultsOnly, Category = "State Machine", meta = (EditCondition = "bReuseCurrentState"))
 	bool bReuseIfNotEndState;
 };
 

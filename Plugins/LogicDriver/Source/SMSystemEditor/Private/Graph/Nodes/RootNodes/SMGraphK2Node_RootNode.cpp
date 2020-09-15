@@ -1,7 +1,7 @@
 #include "SMGraphK2Node_RootNode.h"
 #include "K2Node_Composite.h"
 #include "EdGraph/EdGraph.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "Configuration/SMEditorStyle.h"
 
 #define LOCTEXT_NAMESPACE "SMRootNode"

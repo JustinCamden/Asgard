@@ -17,6 +17,6 @@ public:
 
 protected:
 	// SGraphNodeK2Composite interface
-	UEdGraph* GetInnerGraph() const override;
+	virtual UEdGraph* GetInnerGraph() const override;
 	// End of SGraphNodeK2Composite interface
 };

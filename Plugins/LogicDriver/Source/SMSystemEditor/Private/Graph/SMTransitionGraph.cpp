@@ -1,9 +1,10 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "SMTransitionGraph.h"
 #include "EdGraph/EdGraphPin.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "Nodes/SMGraphNode_TransitionEdge.h"
 #include "Nodes/Helpers/SMGraphK2Node_FunctionNodes.h"
+#include "Nodes/Helpers/SMGraphK2Node_FunctionNodes_NodeInstance.h"
 #include "Nodes/Helpers/SMGraphK2Node_StateWriteNodes.h"
 #include "Nodes/RootNodes/SMGraphK2Node_TransitionEnteredNode.h"
 #include "Nodes/RootNodes/SMGraphK2Node_TransitionPreEvaluateNode.h"
@@ -66,9 +67,35 @@ bool USMTransitionGraph::HasAnyLogicConnections() const
 	return false;
 }
 
+ESMConditionalEvaluationType USMTransitionGraph::GetConditionalEvaluationType() const
+{
+	// Check if there are any pins wired to this boolean input.
+	TArray<USMGraphK2Node_TransitionResultNode*> RootNodeList;
+
+	// We want to find the node even if it's buried in a nested graph.
+	FSMBlueprintEditorUtils::GetAllNodesOfClassNested<USMGraphK2Node_TransitionResultNode>(const_cast<USMTransitionGraph*>(this), RootNodeList);
+
+	for (USMGraphK2Node_RootNode* RootNode : RootNodeList)
+	{
+		UEdGraphPin* Pin = RootNode->GetInputPin();
+		
+		if (Pin->LinkedTo.Num() == 0)
+		{
+			return Pin->DefaultValue.ToBool() ? ESMConditionalEvaluationType::SM_AlwaysTrue : ESMConditionalEvaluationType::SM_AlwaysFalse;
+		}
+		
+		if (Pin->LinkedTo.Num() == 1 && Pin->LinkedTo[0]->GetOwningNode()->GetClass() == USMGraphK2Node_TransitionInstance_CanEnterTransition::StaticClass())
+		{
+			return ESMConditionalEvaluationType::SM_NodeInstance;
+		}
+	}
+
+	return ESMConditionalEvaluationType::SM_Graph;
+}
+
 bool USMTransitionGraph::HasTransitionTunnel() const
 {
-	return HasNodeWithExecutionLogic< USMGraphK2Node_TransitionEnteredNode>();
+	return HasNodeWithExecutionLogic<USMGraphK2Node_TransitionEnteredNode>();
 }
 
 bool USMTransitionGraph::HasPreEvalLogic() const

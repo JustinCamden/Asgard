@@ -4,7 +4,7 @@
 #include "Nodes/SMGraphK2Node_StateMachineNode.h"
 #include "Nodes/SMGraphNode_StateMachineStateNode.h"
 #include "Nodes/SMGraphNode_StateMachineEntryNode.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "GraphEditAction.h"
 
 

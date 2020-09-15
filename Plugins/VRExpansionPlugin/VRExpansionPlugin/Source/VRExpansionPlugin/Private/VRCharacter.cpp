@@ -54,9 +54,9 @@ FVector AVRCharacter::GetNavAgentLocation() const
 
 	if (GetCharacterMovement() != nullptr)
 	{
-		if (UVRCharacterMovementComponent * VRMove = Cast<UVRCharacterMovementComponent>(GetCharacterMovement()))
+		if (VRMovementReference)
 		{
-			AgentLocation = VRMove->GetActorFeetLocationVR();
+			AgentLocation = VRMovementReference->GetActorFeetLocationVR();
 		}
 		else
 			AgentLocation = GetCharacterMovement()->GetActorFeetLocation();
@@ -147,10 +147,10 @@ void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, flo
 	}
 	else
 	{
-		const ANavigationData* ProjectionNavData = NavSys->GetNavDataForProps(Controller->GetNavAgentPropertiesRef());
-		if (ProjectionNavData)
+		const ANavigationData* NavData = NavSys->GetNavDataForProps(Controller->GetNavAgentPropertiesRef());
+		if (NavData)
 		{
-			FPathFindingQuery Query(Controller, *ProjectionNavData, Controller->GetNavAgentLocation(), GoalLocation);
+			FPathFindingQuery Query(Controller, *NavData, Controller->GetNavAgentLocation(), GoalLocation);
 			FPathFindingResult Result = NavSys->FindPathSync(Query);
 			if (Result.IsSuccessful())
 			{

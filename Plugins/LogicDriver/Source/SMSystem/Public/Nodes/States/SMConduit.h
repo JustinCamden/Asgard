@@ -20,6 +20,10 @@ struct SMSYSTEM_API FSMConduit : public FSMState_Base
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Result, meta = (AlwaysAsPin))
 	bool bCanEnterTransition;
 
+	/** Set from graph execution or configurable from details panel. Must be true for the conduit to be evaluated. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Transition)
+	bool bCanEvaluate;
+	
 	/**
 	 * This conduit will be evaluated with inbound and outbound transitions.
 	 * If any transition fails the entire transition fails. In that case the
@@ -27,14 +31,6 @@ struct SMSYSTEM_API FSMConduit : public FSMState_Base
 	 */
 	UPROPERTY()
 	bool bEvalWithTransitions;
-
-	/** Entry point to when a transition is first initialized. */
-	UPROPERTY()
-	TArray<FSMExposedFunctionHandler> TransitionInitializedGraphEvaluators;
-
-	/** Entry point to when a transition is shutdown. */
-	UPROPERTY()
-	TArray<FSMExposedFunctionHandler> TransitionShutdownGraphEvaluators;
 
 	/** Entry point when the conduit is entered. */
 	UPROPERTY()
@@ -46,27 +42,39 @@ public:
 	FSMConduit();
 
 	// FSMNode_Base
-	void Initialize(UObject* Instance) override;
-	void Reset() override;
-	bool IsNodeInstanceClassCompatible(UClass* NewNodeInstanceClass) const override;
-	UClass* GetDefaultNodeInstanceClass() const override;
+	virtual void Initialize(UObject* Instance) override;
+	virtual void Reset() override;
+	virtual bool IsNodeInstanceClassCompatible(UClass* NewNodeInstanceClass) const override;
+	virtual UClass* GetDefaultNodeInstanceClass() const override;
 	// ~FSMNode_Base
 
 	// FSMState_Base
-	bool StartState() override;
-	bool UpdateState(float DeltaSeconds) override;
-	bool EndState(float DeltaSeconds, const FSMTransition* TransitionToTake) override;
+	virtual bool StartState() override;
+	virtual bool UpdateState(float DeltaSeconds) override;
+	virtual bool EndState(float DeltaSeconds, const FSMTransition* TransitionToTake) override;
 
-	bool IsConduit() const override { return true; }
+	virtual bool IsConduit() const override { return true; }
 	
 	/** Evaluate the conduit and retrieve the correct condition. */
-	bool GetValidTransition(TArray<TArray<FSMTransition*>>& Transitions) override;
+	virtual bool GetValidTransition(TArray<TArray<FSMTransition*>>& Transitions) override;
 	// ~FSMState_Base
-
+	
 	/** Should this be considered an extension to a transition? */
 	bool IsConfiguredAsTransition() const { return bEvalWithTransitions; }
 
+	/** Signal that this conduit is being entered along with transitions. */
 	void EnterConduitWithTransition();
+
+public:
+	bool bIsEvaluating;
+	
+#if WITH_EDITORONLY_DATA
+	virtual bool IsDebugActive() const override { return bIsEvaluating ? bIsEvaluating : Super::IsDebugActive(); }
+	virtual bool WasDebugActive() const override { return bWasEvaluating ? bWasEvaluating : Super::WasDebugActive(); }
+	
+	/** Helper to display evaluation color in the editor. */
+	bool bWasEvaluating = false;
+#endif
 	
 private:
 	// True for GetValidTransitions, prevents stack overflow when looped with other transition based conduits.

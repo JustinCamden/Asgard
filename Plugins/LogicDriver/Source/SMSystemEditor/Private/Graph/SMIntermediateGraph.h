@@ -14,7 +14,7 @@ class SMSYSTEMEDITOR_API USMIntermediateGraph : public USMStateGraph
 	GENERATED_UCLASS_BODY()
 
 	// USMGraphK2
-	FSMNode_Base* GetRuntimeNode() const override { return IntermediateEntryNode ? IntermediateEntryNode->GetRunTimeNode() : nullptr; }
+	virtual FSMNode_Base* GetRuntimeNode() const override { return IntermediateEntryNode ? IntermediateEntryNode->GetRunTimeNode() : nullptr; }
 	// ~USMGraphK2
 public:
 	UPROPERTY()

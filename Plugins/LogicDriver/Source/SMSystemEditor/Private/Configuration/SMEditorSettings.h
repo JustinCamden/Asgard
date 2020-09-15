@@ -62,13 +62,17 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Transitions")
 	FLinearColor TransitionValidColor;
 
-	/** When a transition has On Transition Entered logic. */
-	UPROPERTY(config, EditAnywhere, Category = "Transitions")
-	FLinearColor TransitionWithEntryLogic;
-
 	/** When a transition is hovered. */
 	UPROPERTY(config, EditAnywhere, Category = "Transitions")
-	FLinearColor TransitionHoverCover;
+	FLinearColor TransitionHoverColor;
+
+	/** Allow transitions with On Transition Entered logic to have a special color. */
+	UPROPERTY(config, EditAnywhere, Category = "Transitions")
+	bool bEnableTransitionWithEntryLogicColor;
+	
+	/** When a transition has On Transition Entered logic. */
+	UPROPERTY(config, EditAnywhere, Category = "Transitions", meta = (EditCondition = "bEnableTransitionWithEntryLogicColor"))
+	FLinearColor TransitionWithEntryLogicColor;
 	
 	/** When a state is active during debug. */
 	UPROPERTY(config, EditAnywhere, Category = "Debug")
@@ -89,4 +93,12 @@ public:
 	/** The fade time in seconds to hide the last active transition. */
 	UPROPERTY(config, EditAnywhere, Category = "Debug", meta = (ClampMin = "0.0"))
 	float TimeToFadeLastActiveTransition;
+
+	/** Transitions that are evaluating will be highlighted in the editor during debug. */
+	UPROPERTY(config, EditAnywhere, Category = "Debug")
+	bool bDisplayTransitionEvaluation;
+	
+	/** When a transition is evaluating during debug. */
+	UPROPERTY(config, EditAnywhere, Category = "Debug", meta = (EditCondition = "bDisplayTransitionEvaluation"))
+	FLinearColor EvaluatingTransitionColor;
 };

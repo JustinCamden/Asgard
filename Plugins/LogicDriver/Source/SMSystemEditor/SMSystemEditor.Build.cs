@@ -48,8 +48,9 @@ public class SMSystemEditor : ModuleRules
                 "MessageLog",
                 "EditorWidgets",
                 "ToolMenus",
-                
-				"WorkspaceMenuStructure",
+                "AssetTools",
+
+                "WorkspaceMenuStructure",
 				"DetailCustomizations",
                 "PropertyEditor",
 
@@ -61,7 +62,7 @@ public class SMSystemEditor : ModuleRules
 				"GraphEditor",
                 "ContentBrowser",
                 
-				"ApplicationCore",
+				"ApplicationCore"
             }
             );
 

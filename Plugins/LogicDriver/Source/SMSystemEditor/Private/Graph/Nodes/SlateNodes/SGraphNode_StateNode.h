@@ -18,21 +18,21 @@ public:
 
 	void Construct(const FArguments& InArgs, USMGraphNode_StateNodeBase* InNode);
 
-	// SGraphNode interface
-	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
-	void UpdateGraphNode() override;
-	void CreatePinWidgets() override;
-	void AddPin(const TSharedRef<SGraphPin>& PinToAdd) override;
-	TSharedPtr<SToolTip> GetComplexTooltip() override;
-	TArray<FOverlayWidgetInfo> GetOverlayWidgets(bool bSelected, const FVector2D& WidgetSize) const override;
-	FReply OnMouseButtonDoubleClick(const FGeometry& InMyGeometry, const FPointerEvent& InMouseEvent) override;
-	void RequestRenameOnSpawn() override;
-	FReply OnDrop(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
-	// End of SGraphNode interface
+	// SGraphNode
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
+	virtual void UpdateGraphNode() override;
+	virtual void CreatePinWidgets() override;
+	virtual void AddPin(const TSharedRef<SGraphPin>& PinToAdd) override;
+	virtual TSharedPtr<SToolTip> GetComplexTooltip() override;
+	virtual TArray<FOverlayWidgetInfo> GetOverlayWidgets(bool bSelected, const FVector2D& WidgetSize) const override;
+	virtual FReply OnMouseButtonDoubleClick(const FGeometry& InMyGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void RequestRenameOnSpawn() override;
+	virtual FReply OnDrop(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
+	// ~SGraphNode
 
-	// SNodePanel::SNode interface
-	void GetNodeInfoPopups(FNodeInfoContext* Context, TArray<FGraphInformationPopupInfo>& Popups) const override;
-	// End of SNodePanel::SNode interface
+	// SNodePanel::SNode
+	virtual void GetNodeInfoPopups(FNodeInfoContext* Context, TArray<FGraphInformationPopupInfo>& Popups) const override;
+	// ~SNodePanel::SNode
 protected:
 	virtual TSharedPtr<SVerticalBox> CreateContentBox();
 	virtual FSlateColor GetBorderBackgroundColor() const;
@@ -55,7 +55,9 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, USMGraphNode_ConduitNode* InNode);
-
+	// SNodePanel::SNode
+	virtual void GetNodeInfoPopups(FNodeInfoContext* Context, TArray<FGraphInformationPopupInfo>& Popups) const override;
+	// ~SNodePanel::SNode
 protected:
-	const FSlateBrush* GetNameIcon() const override;
+	virtual const FSlateBrush* GetNameIcon() const override;
 };

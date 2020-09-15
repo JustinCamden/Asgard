@@ -21,8 +21,9 @@
 #include "Graph/Nodes/SMGraphNode_StateNode.h"
 #include "Graph/Nodes/SMGraphNode_TransitionEdge.h"
 #include "Graph/Nodes/SMGraphNode_StateMachineEntryNode.h"
-#include "SMBlueprint.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Blueprints/SMBlueprint.h"
+#include "SMBlueprintEditor.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "ToolMenu.h"
 
 
@@ -404,6 +405,11 @@ void USMGraphSchema::GetContextMenuActions(class UToolMenu* Menu, class UGraphNo
 	
 	if (InGraphNode)
 	{
+		if (FSMBlueprintEditor* Editor = FSMBlueprintEditorUtils::GetStateMachineEditor(InGraphNode))
+		{
+			Editor->SelectedNodeForContext = MakeWeakObjectPtr<UEdGraphNode>(const_cast<UEdGraphNode*>(InGraphNode));
+		}
+		
 		FToolMenuSection& Section = Menu->AddSection("SMGraphSchemaNodeActions", LOCTEXT("NodeActionsMenuHeader", "Node Actions"));
 		{
 			Section.AddMenuEntry(FGenericCommands::Get().Delete);
@@ -418,14 +424,22 @@ void USMGraphSchema::GetContextMenuActions(class UToolMenu* Menu, class UGraphNo
 
 			if (!bIsDebugging)
 			{
-				Section.AddMenuEntry(FSMEditorCommands::Get().CollapseToStateMachine);
+				FToolMenuSection& StateSection = Menu->AddSection("SMGraphSchemaStateActions", LOCTEXT("StateActionsMenuHeader", "State Actions"));
+				
+				if (const USMGraphNode_StateNode* StateNode = Cast<USMGraphNode_StateNode>(InGraphNode))
+				{
+					StateSection.AddMenuEntry(FSMEditorCommands::Get().CutAndMergeStates);
+					StateSection.AddMenuEntry(FSMEditorCommands::Get().CopyAndMergeStates);
+				}
+				
+				StateSection.AddMenuEntry(FSMEditorCommands::Get().CollapseToStateMachine);
 
 				if (CanReplaceNode(InGraphNode))
 				{
-					Section.AddSubMenu(
+					StateSection.AddSubMenu(
 						NAME_None,
 						LOCTEXT("NodeActionsReplaceWith", "Replace With..."),
-						LOCTEXT("NodeActionsReplaceWithToolTip", "Perform a destructive replacement of the selected node."),
+						LOCTEXT("NodeActionsReplaceWithToolTip", "Perform a destructive replacement of the selected node"),
 						FNewMenuDelegate::CreateUObject((USMGraphSchema*const)this, &USMGraphSchema::GetReplaceWithMenuActions, InGraphNode));
 				}
 
@@ -476,6 +490,10 @@ void USMGraphSchema::GetContextMenuActions(class UToolMenu* Menu, class UGraphNo
 		{
 			GraphSection.AddMenuEntry(FSMEditorCommands::Get().GoToGraph);
 			GraphSection.AddMenuEntry(FSMEditorCommands::Get().GoToNodeBlueprint);
+			if (const USMGraphNode_StateNode* StateNode = Cast<USMGraphNode_StateNode>(InGraphNode))
+			{
+				GraphSection.AddMenuEntry(FSMEditorCommands::Get().GoToPropertyBlueprint);
+			}
 		}
 
 		FToolMenuSection& LinkSection = Menu->AddSection("SMGraphSchemaLinkActions", LOCTEXT("LinkActionsMenuHeader", "Link Actions"));
@@ -550,39 +568,6 @@ const FPinConnectionResponse USMGraphSchema::CanCreateConnection(const UEdGraphP
 		}
 
 		return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, LOCTEXT("PinErrorNotStateNode", "Entry must connect to a state node."));
-	}
-
-	// See if a transition already exists between states.
-	if (StateNodeA && StateNodeB)
-	{
-		for (UEdGraphPin* PinATo : StateNodeA->GetOutputPin()->LinkedTo)
-		{
-			if (USMGraphNode_TransitionEdge* TransitionA = Cast<USMGraphNode_TransitionEdge>(PinATo->GetOwningNode()))
-			{
-				if (StateNodeB->GetInputPin()->LinkedTo.FindByPredicate([&](const UEdGraphPin* PinBTo)
-				{
-					return PinBTo->GetOwningNode() == TransitionA;
-				}))
-				{
-					return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, LOCTEXT("PinErrorAlreadyExists", "A connection already exists in this direction between these states."));
-				}
-			}
-		}
-	}
-
-	// Additional check during creation process.
-	for (UEdGraphPin* PinATo : PinA->LinkedTo)
-	{
-		if (USMGraphNode_TransitionEdge* TransitionA = Cast<USMGraphNode_TransitionEdge>(PinATo->GetOwningNode()))
-		{
-			if (PinB->LinkedTo.FindByPredicate([&](const UEdGraphPin* PinBTo)
-			{
-				return PinBTo->GetOwningNode() == TransitionA;
-			}))
-			{
-				return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, LOCTEXT("PinErrorAlreadyExists", "A connection already exists in this direction between these states."));
-			}
-		}
 	}
 
 	const bool bPinAIsTransition = PinA->GetOwningNode()->IsA(USMGraphNode_TransitionEdge::StaticClass());

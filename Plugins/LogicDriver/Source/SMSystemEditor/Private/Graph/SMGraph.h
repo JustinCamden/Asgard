@@ -18,10 +18,10 @@ class SMSYSTEMEDITOR_API USMGraph : public UEdGraph
 
 public:
 	//~ Begin UEdGraph Interface
-	bool Modify(bool bAlwaysMarkDirty = true) override;
-	void PostEditUndo() override;
-	void NotifyGraphChanged() override;
-	void NotifyGraphChanged(const FEdGraphEditAction& Action) override;
+	virtual bool Modify(bool bAlwaysMarkDirty = true) override;
+	virtual void PostEditUndo() override;
+	virtual void NotifyGraphChanged() override;
+	virtual void NotifyGraphChanged(const FEdGraphEditAction& Action) override;
 	//~ End UEdGraph Interface
 
 	USMGraphNode_StateMachineEntryNode* GetEntryNode() const;

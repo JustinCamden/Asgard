@@ -4,21 +4,22 @@
 #include "BlueprintActionDatabaseRegistrar.h"
 #include "Graph/Schema/SMGraphK2Schema.h"
 #include "K2Node_CallFunction.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "K2Node_DynamicCast.h"
+#include "K2Node_GetArrayItem.h"
 #include "K2Node_StructMemberGet.h"
 
 
 #define LOCTEXT_NAMESPACE "SMSStateNodeInstance"
 
 USMGraphK2Node_StateReadNode_GetNodeInstance::USMGraphK2Node_StateReadNode_GetNodeInstance(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+	: Super(ObjectInitializer), NodeInstanceIndex(-1)
 {
 }
 
 void USMGraphK2Node_StateReadNode_GetNodeInstance::AllocateDefaultPins()
 {
-	if (const TSubclassOf<UObject> TargetType = FSMBlueprintEditorUtils::GetNodeTemplateClass(GetGraph(), true))
+	if (const TSubclassOf<UObject> TargetType = FSMBlueprintEditorUtils::GetNodeTemplateClass(GetGraph(), true, NodeInstanceGuid))
 	{
 		AllocatePinsForType(TargetType);
 	}
@@ -26,14 +27,14 @@ void USMGraphK2Node_StateReadNode_GetNodeInstance::AllocateDefaultPins()
 
 bool USMGraphK2Node_StateReadNode_GetNodeInstance::IsCompatibleWithGraph(UEdGraph const* Graph) const
 {
-	return Graph->GetSchema()->GetClass()->IsChildOf<USMGraphK2Schema>() && FSMBlueprintEditorUtils::GetNodeTemplateClass(Graph, true) != nullptr;
+	return Graph->GetSchema()->GetClass()->IsChildOf<USMGraphK2Schema>() && FSMBlueprintEditorUtils::GetNodeTemplateClass(Graph, true, NodeInstanceGuid) != nullptr;
 }
 
 FText USMGraphK2Node_StateReadNode_GetNodeInstance::GetNodeTitle(ENodeTitleType::Type TitleType) const
 {
 	if (TitleType != ENodeTitleType::MenuTitle)
 	{
-		if (UClass* NodeClass = FSMBlueprintEditorUtils::GetNodeTemplateClass(GetGraph()))
+		if (UClass* NodeClass = FSMBlueprintEditorUtils::GetNodeTemplateClass(GetGraph(), false, NodeInstanceGuid))
 		{
 			FString Name = NodeClass->GetName();
 			Name.RemoveFromEnd("_C");
@@ -120,13 +121,47 @@ void USMGraphK2Node_StateReadNode_GetNodeInstance::CreateAndWireExpandedNodes(UE
 
 	// Check if there's a newer version of this class. It's possible this compile could have triggered a recompile of dependent classes.
 	Class = FSMBlueprintEditorUtils::GetMostUpToDateClass(Class);
+
+	const UEdGraphSchema* Schema = SourceNode->GetSchema();
 	
 	UK2Node_StructMemberGet* GetInstanceNode = CompilerContext.SpawnIntermediateNode<UK2Node_StructMemberGet>(SourceNode, CompilerContext.ConsolidatedEventGraph);
 	GetInstanceNode->VariableReference.SetSelfMember(NodeProperty->GetFName());
 	GetInstanceNode->StructType = RuntimeNodeContainer->GetRunTimeNodeType();
 	GetInstanceNode->AllocateDefaultPins();
-	UEdGraphPin* NodeInstancePin = GetInstanceNode->FindPinChecked(TEXT("NodeInstance"));
 
+	UEdGraphPin* NodeInstancePin = nullptr;
+	{
+		// NodeInstancePin assignment.
+		
+		if (USMGraphK2Node_StateReadNode_GetNodeInstance* ThisNode = Cast<USMGraphK2Node_StateReadNode_GetNodeInstance>(SourceNode))
+		{
+			// Check if this is an array lookup for a stack template.
+			if (ThisNode->NodeInstanceIndex >= 0)
+			{
+				UEdGraphPin* InstanceArrayPin = GetInstanceNode->FindPinChecked(TEXT("StackNodeInstances"));
+				
+				UK2Node_GetArrayItem* ArrayGet = CompilerContext.SpawnIntermediateNode<UK2Node_GetArrayItem>(SourceNode, CompilerContext.ConsolidatedEventGraph);
+				ArrayGet->AllocateDefaultPins();
+				NodeInstancePin = ArrayGet->GetResultPin();
+				
+				/*
+				 * HACK: Set bIsReference to false otherwise 'Array Get node altered. Now returning a copy.' is displayed as a warning.
+				 * The correct way to fix this is to call ArrayGet->SetDesiredReturnType(false) but that method isn't exported.
+				 */
+				NodeInstancePin->PinType.bIsReference = false;
+				
+				Schema->TryCreateConnection(InstanceArrayPin, ArrayGet->GetTargetArrayPin());
+				Schema->TrySetDefaultValue(*ArrayGet->GetIndexPin(), FString::FromInt(ThisNode->NodeInstanceIndex));
+			}
+		}
+
+		if (!NodeInstancePin)
+		{
+			// Standard template.
+			NodeInstancePin = GetInstanceNode->FindPinChecked(TEXT("NodeInstance"));
+		}
+	}
+	
 	UK2Node_DynamicCast* CastNode = CompilerContext.SpawnIntermediateNode<UK2Node_DynamicCast>(SourceNode, CompilerContext.ConsolidatedEventGraph);
 	CastNode->TargetType = Class;
 	CastNode->PostPlacedNewNode();
@@ -139,7 +174,7 @@ void USMGraphK2Node_StateReadNode_GetNodeInstance::CreateAndWireExpandedNodes(UE
 		return;
 	}
 
-	SourceNode->GetSchema()->TryCreateConnection(NodeInstancePin, CastNode->GetCastSourcePin());
+	Schema->TryCreateConnection(NodeInstancePin, CastNode->GetCastSourcePin());
 
 	if(CastOutputNode)
 	{

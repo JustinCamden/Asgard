@@ -16,19 +16,19 @@ public:
 	FSMTextGraphProperty TextProperty;
 	
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
+	virtual void AllocateDefaultPins() override;
 	// ~UedGraphNode
 	
 	// USMGraphK2Node_PropertyNode
-	FSMGraphProperty_Base* GetPropertyNode() override { return &TextProperty; }
-	void SetPropertyNode(FSMGraphProperty_Base* NewNode) override { TextProperty = *(FSMTextGraphProperty*)NewNode; }
-	TSharedPtr<SSMGraphProperty_Base> GetGraphNodeWidget() const override;
-	bool IsConsideredForDefaultProperty() const override { return TextProperty.WidgetInfo.bConsiderForDefaultWidget; }
-	void DefaultPropertyActionWhenPlaced(TSharedPtr<SWidget> Widget) override;
-	void ResetProperty() override;
-	void SetPropertyDefaultsFromPin() override;
-	void SetPinValueFromPropertyDefaults(bool bUpdateTemplateDefaults) override;
+	virtual FSMGraphProperty_Base* GetPropertyNode() override { return &TextProperty; }
+	virtual void SetPropertyNode(FSMGraphProperty_Base* NewNode) override { TextProperty = *(FSMTextGraphProperty*)NewNode; }
+	virtual TSharedPtr<SSMGraphProperty_Base> GetGraphNodeWidget() const override;
+	virtual bool IsConsideredForDefaultProperty() const override { return TextProperty.WidgetInfo.bConsiderForDefaultWidget; }
+	virtual void DefaultPropertyActionWhenPlaced(TSharedPtr<SWidget> Widget) override;
+	virtual void ResetProperty() override;
+	virtual void SetPropertyDefaultsFromPin() override;
+	virtual void SetPinValueFromPropertyDefaults(bool bUpdateTemplateDefaults) override;
 protected:
-	void Internal_GetContextMenuActionsForOwningNode(const UEdGraph* CurrentGraph, const UEdGraphNode* InGraphNode, const UEdGraphPin* InGraphPin, FToolMenuSection& MenuSection, bool bIsDebugging) const override;
+	virtual void Internal_GetContextMenuActionsForOwningNode(const UEdGraph* CurrentGraph, const UEdGraphNode* InGraphNode, const UEdGraphPin* InGraphPin, FToolMenuSection& MenuSection, bool bIsDebugging) const override;
 	// ~USMGraphK2Node_PropertyNode
 };

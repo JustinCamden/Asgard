@@ -8,8 +8,8 @@
 #include "Factories/Factory.h"
 #include "Graph/Schema/SMGraphSchema.h"
 #include "SMInstance.h"
-#include "SMBlueprint.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Blueprints/SMBlueprint.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "SMTestContext.h"
 #include "Graph/SMTransitionGraph.h"
 #include "Graph/Nodes/SMGraphNode_StateMachineStateNode.h"
@@ -143,7 +143,7 @@ namespace TestHelpers
 
 	/** Run a state machine until it is in an end state. Works with nested state machines. */
 	USMInstance* RunStateMachineToCompletion(FAutomationTestBase* Test, USMBlueprint* Blueprint,
-		int32& LogicEntryValueOut, int32& LogicUpdateValueOut, int32& LogicEndValueOut, int32 MaxIterations = 1000, bool bShutdownStateMachine = true, bool bTestCompletion = true, bool bCompile = true);
+		int32& LogicEntryValueOut, int32& LogicUpdateValueOut, int32& LogicEndValueOut, int32 MaxIterations = 1000, bool bShutdownStateMachine = true, bool bTestCompletion = true, bool bCompile = true, int32* IterationsRan = nullptr);
 
 	/** Recursively run state machines until the end state is reached of each one. Tests retrieving nested active state and retrieving node information.
 	 * If the state machine isn't started it will start it. Bind events verifies events are fired but not an accurate count. */

@@ -58,21 +58,23 @@ struct SMSYSTEM_API FSMStateMachine : public FSMState_Base
 public:
 	FSMStateMachine();
 	// FSMState_Base
-	void Initialize(UObject* Instance) override;
-	void Reset() override;
-	bool StartState() override;
-	bool UpdateState(float DeltaSeconds) override;
-	bool EndState(float DeltaSeconds, const FSMTransition* TransitionToTake = nullptr) override;
-	void OnStartedByInstance(USMInstance* Instance) override;
-	void OnStoppedByInstance(USMInstance* Instance) override;
-	void CalculatePathGuid(TMap<FString, int32>& MappedPaths) override;
+	virtual void Initialize(UObject* Instance) override;
+	virtual void Reset() override;
+	virtual bool StartState() override;
+	virtual bool UpdateState(float DeltaSeconds) override;
+	virtual bool EndState(float DeltaSeconds, const FSMTransition* TransitionToTake = nullptr) override;
+	virtual void ExecuteInitializeNodes() override;
+	virtual void ExecuteShutdownNodes() override;
+	virtual void OnStartedByInstance(USMInstance* Instance) override;
+	virtual void OnStoppedByInstance(USMInstance* Instance) override;
+	virtual void CalculatePathGuid(TMap<FString, int32>& MappedPaths) override;
 	/** If the current state is an end state. */
-	bool IsInEndState() const override;
-	bool IsStateMachine() const override { return true; }
-	bool IsNodeInstanceClassCompatible(UClass* NewNodeInstanceClass) const override;
-	USMNodeInstance* GetNodeInstance() const override;
-	UClass* GetDefaultNodeInstanceClass() const override;
-	FSMNode_Base* GetOwnerNode() const override;
+	virtual bool IsInEndState() const override;
+	virtual bool IsStateMachine() const override { return true; }
+	virtual bool IsNodeInstanceClassCompatible(UClass* NewNodeInstanceClass) const override;
+	virtual USMNodeInstance* GetNodeInstance() const override;
+	virtual UClass* GetDefaultNodeInstanceClass() const override;
+	virtual FSMNode_Base* GetOwnerNode() const override;
 	// ~FSMState_Base
 
 	/** Add a state to this State Machine. */

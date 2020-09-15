@@ -9,7 +9,7 @@
 #include "Graph/Nodes/SMGraphNode_Base.h"
 #include "Graph/SMPropertyGraph.h"
 #include "Commands/SMEditorCommands.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "SMBlueprintEditor.h"
 #include "ToolMenu.h"
 
@@ -287,6 +287,22 @@ USMNodeInstance* USMGraphK2Node_PropertyNode_Base::GetOwningTemplate() const
 		return nullptr;
 	}
 
+	FSMGraphProperty_Base* PropertyNode = GetPropertyNodeConstChecked();
+	if (USMNodeInstance* NodeInstance = OwningGraphNode->GetNodeTemplateFromGuid(PropertyNode->GetGuid()))
+	{
+		return NodeInstance;
+	}
+
+	if (PropertyNode->GetTemplateGuid().IsValid())
+	{
+		/*
+		 * This is a stack template but the template could not be found!
+		 * This *should* only occur when copy & pasting and the stack hasn't fully regenerated.
+		 */
+		return nullptr;
+	}
+
+	// Fallback to original behavior since the guid template tracking won't be setup on < 2.4 imports.
 	return OwningGraphNode->GetNodeTemplate();
 }
 
@@ -313,6 +329,14 @@ USMGraphNode_Base* USMGraphK2Node_PropertyNode_Base::GetOwningGraphNode() const
 void USMGraphK2Node_PropertyNode_Base::JumpToPropertyGraph()
 {
 	FKismetEditorUtilities::BringKismetToFocusAttentionOnObject(GetPropertyGraph());
+}
+
+void USMGraphK2Node_PropertyNode_Base::JumpToTemplateBlueprint()
+{
+	if (UBlueprint* TemplateBlueprint = GetTemplateBlueprint())
+	{
+		FKismetEditorUtilities::BringKismetToFocusAttentionOnObject(TemplateBlueprint);
+	}
 }
 
 TSharedPtr<SSMGraphProperty_Base> USMGraphK2Node_PropertyNode_Base::GetGraphNodeWidget() const

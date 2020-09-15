@@ -17,12 +17,12 @@ public:
 	void Construct(const FArguments& InArgs, USMGraphNode_StateMachineEntryNode* InNode);
 
 	// SNodePanel::SNode interface
-	void GetNodeInfoPopups(FNodeInfoContext* Context, TArray<FGraphInformationPopupInfo>& Popups) const override;
+	virtual void GetNodeInfoPopups(FNodeInfoContext* Context, TArray<FGraphInformationPopupInfo>& Popups) const override;
 	// End of SNodePanel::SNode interface
 
 	// SGraphNode interface
-	void UpdateGraphNode() override;
-	void AddPin(const TSharedRef<SGraphPin>& PinToAdd) override;
+	virtual void UpdateGraphNode() override;
+	virtual void AddPin(const TSharedRef<SGraphPin>& PinToAdd) override;
 
 	// End of SGraphNode interface
 

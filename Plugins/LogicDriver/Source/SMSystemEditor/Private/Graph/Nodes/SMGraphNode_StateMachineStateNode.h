@@ -64,27 +64,27 @@ class SMSYSTEMEDITOR_API USMGraphNode_StateMachineStateNode : public USMGraphNod
 	TSubclassOf<USMStateMachineInstance> StateMachineClass;
 	
 	//~ Begin UEdGraphNode Interface
-	void PostLoad() override;
-	void PostPlacedNewNode() override;
-	void PostPasteNode() override;
-	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	void PostEditUndo() override;
-	void DestroyNode() override;
-	void ValidateNodeDuringCompilation(FCompilerResultsLog& MessageLog) const override;
-	UObject* GetJumpTargetForDoubleClick() const override;
-	void JumpToDefinition() const override;
+	virtual void PostLoad() override;
+	virtual void PostPlacedNewNode() override;
+	virtual void PostPasteNode() override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostEditUndo() override;
+	virtual void DestroyNode() override;
+	virtual void ValidateNodeDuringCompilation(FCompilerResultsLog& MessageLog) const override;
+	virtual UObject* GetJumpTargetForDoubleClick() const override;
+	virtual void JumpToDefinition() const override;
 	//~ End UEdGraphNode Interface
 	
 	// USMGraphNode_StateNodeBase
-	void SetRuntimeDefaults(FSMState_Base& State) const override;
+	virtual void SetRuntimeDefaults(FSMState_Base& State) const override;
 	// ~USMGraphNode_StateNodeBase
 
 	// USMGraphNode_Base
-	void ImportDeprecatedProperties() override;
-	void CheckSetErrorMessages() override;
-	UClass* GetNodeClass() const override { return StateMachineClass; }
-	void SetNodeClass(UClass* Class) override;
-	FName GetFriendlyNodeName() const override { return "StateMachine"; }
+	virtual void ImportDeprecatedProperties() override;
+	virtual void CheckSetErrorMessages() override;
+	virtual UClass* GetNodeClass() const override { return StateMachineClass; }
+	virtual void SetNodeClass(UClass* Class) override;
+	virtual FName GetFriendlyNodeName() const override { return "StateMachine"; }
 	// ~USMGraphNode_Base
 
 	/** Returns the best graph of the reference to jump to. */
@@ -150,7 +150,7 @@ class SMSYSTEMEDITOR_API USMGraphNode_StateMachineStateNode : public USMGraphNod
 
 protected:
 	// USMGraphNode_StateNodeBase
-	FLinearColor Internal_GetBackgroundColor() const override;
+	virtual FLinearColor Internal_GetBackgroundColor() const override;
 	// ~USMGraphNode_StateNodeBase
 
 	/** If this state machine contains any actual states. */

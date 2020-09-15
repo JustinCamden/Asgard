@@ -34,7 +34,7 @@ struct SMSYSTEM_API FSMStateClassRule : public FSMNodeClassRule
 {
 	GENERATED_USTRUCT_BODY()
 
-	UClass* GetClass() const override;
+	virtual UClass* GetClass() const override;
 	
 	/** The state class to look for. */
 	UPROPERTY(EditDefaultsOnly, Category = "Rule", meta = (NoResetToDefault, AllowAbstract))
@@ -46,7 +46,7 @@ struct SMSYSTEM_API FSMStateMachineClassRule : public FSMNodeClassRule
 {
 	GENERATED_USTRUCT_BODY()
 
-	UClass* GetClass() const override;
+	virtual UClass* GetClass() const override;
 	
 	/** The state machine class to look for. */
 	UPROPERTY(EditDefaultsOnly, Category = "Rule", meta = (NoResetToDefault, AllowAbstract))

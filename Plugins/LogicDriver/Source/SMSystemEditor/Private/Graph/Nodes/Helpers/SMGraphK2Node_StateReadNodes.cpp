@@ -2,8 +2,8 @@
 #include "SMGraphK2Node_StateReadNodes.h"
 #include "BlueprintNodeSpawner.h"
 #include "BlueprintActionDatabaseRegistrar.h"
-#include "SMBlueprintEditorUtils.h"
-#include "SMBlueprint.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
+#include "Blueprints/SMBlueprint.h"
 #include "EdGraph/EdGraph.h"
 #include "Graph/Schema/SMGraphK2Schema.h"
 #include "Graph/SMTransitionGraph.h"
@@ -55,7 +55,7 @@ USMGraphNode_StateNodeBase* USMGraphK2Node_StateReadNode::GetMostRecentState() c
 	{
 		if (USMGraphNode_TransitionEdge* Transition = TransitionGraph->GetOwningTransitionNode())
 		{
-			return Transition->GetStartNode();
+			return Transition->GetFromState();
 		}
 	}
 	else if (USMStateGraph* StateGraph = Cast<USMStateGraph>(GetGraph()))
@@ -191,17 +191,17 @@ void USMGraphK2Node_StateReadNode_CanEvaluate::AllocateDefaultPins()
 
 bool USMGraphK2Node_StateReadNode_CanEvaluate::IsCompatibleWithGraph(UEdGraph const* Graph) const
 {
-	return Graph->IsA<USMTransitionGraph>();
+	return Graph->IsA<USMTransitionGraph>() || Graph->IsA<USMConduitGraph>();
 }
 
 FText USMGraphK2Node_StateReadNode_CanEvaluate::GetNodeTitle(ENodeTitleType::Type TitleType) const
 {
-	return LOCTEXT("GetCanTransitionEvaluate", "Get Can Transition Evaluate Conditionally");
+	return LOCTEXT("GetCanEvaluate", "Get Can Evaluate Conditionally");
 }
 
 FText USMGraphK2Node_StateReadNode_CanEvaluate::GetTooltipText() const
 {
-	return LOCTEXT("CanEvaluateTooltipRead", "If the transition is allowed to evaluate conditionally.");
+	return LOCTEXT("CanEvaluateTooltipRead", "If the transition or conduit is allowed to evaluate conditionally.");
 }
 
 void USMGraphK2Node_StateReadNode_CanEvaluate::GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const
@@ -250,7 +250,7 @@ bool USMGraphK2Node_StateMachineReadNode::IsCompatibleWithGraph(UEdGraph const* 
 {
 	if(USMTransitionGraph const* TransitionGraph = Cast<USMTransitionGraph>(Graph))
 	{
-		return Cast<USMGraphNode_StateMachineStateNode>(TransitionGraph->GetOwningTransitionNodeChecked()->GetStartNode()) != nullptr;
+		return Cast<USMGraphNode_StateMachineStateNode>(TransitionGraph->GetOwningTransitionNodeChecked()->GetFromState()) != nullptr;
 	}
 
 	return false;
@@ -283,7 +283,7 @@ bool USMGraphK2Node_StateMachineReadNode::IsActionFilteredOut(FBlueprintActionFi
 	}
 
 	// Only work for state machine nodes.
-	return !Cast<USMGraphNode_StateMachineStateNode>(TransitionGraph->GetOwningTransitionNodeChecked()->GetStartNode());
+	return !Cast<USMGraphNode_StateMachineStateNode>(TransitionGraph->GetOwningTransitionNodeChecked()->GetFromState());
 }
 
 void USMGraphK2Node_StateMachineReadNode::ValidateNodeDuringCompilation(FCompilerResultsLog& MessageLog) const
@@ -296,7 +296,7 @@ void USMGraphK2Node_StateMachineReadNode::ValidateNodeDuringCompilation(FCompile
 	
 	if (USMTransitionGraph const* TransitionGraph = Cast<USMTransitionGraph>(Graph))
 	{
-		if(Cast<USMGraphNode_StateMachineStateNode>(TransitionGraph->GetOwningTransitionNodeChecked()->GetStartNode()) == nullptr)
+		if(Cast<USMGraphNode_StateMachineStateNode>(TransitionGraph->GetOwningTransitionNodeChecked()->GetFromState()) == nullptr)
 		{
 			MessageLog.Error(TEXT("State Machine Read Node @@ is in a transition not exiting from a state machine."), this);
 			return;

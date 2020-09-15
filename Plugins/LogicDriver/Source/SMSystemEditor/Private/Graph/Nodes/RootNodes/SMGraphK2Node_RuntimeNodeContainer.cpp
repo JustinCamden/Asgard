@@ -5,7 +5,7 @@
 #include "K2Node_StructMemberGet.h"
 #include "K2Node_CallFunction.h"
 #include "Graph/SMGraph.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 
 #define LOCTEXT_NAMESPACE "SMContainerNode"
 
@@ -157,7 +157,7 @@ USMGraphK2Node_RuntimeNodeContainer* USMGraphK2Node_RuntimeNodeReference::GetRun
 
 UK2Node_CallFunction* USMGraphK2Node_RuntimeNodeReference::CreateFunctionCallWithGuidInput(UFunction* Function,
 	FSMKismetCompilerContext& CompilerContext, USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer,
-	FProperty* NodeProperty)
+	FProperty* NodeProperty, FName PinName)
 {
 	UK2Node_CallFunction* GetReferenceFunctionNode = FSMBlueprintEditorUtils::CreateFunctionCall(CompilerContext.ConsolidatedEventGraph, Function);
 
@@ -166,7 +166,7 @@ UK2Node_CallFunction* USMGraphK2Node_RuntimeNodeReference::CreateFunctionCallWit
 	GuidGetNode->StructType = RuntimeNodeContainer->GetRunTimeNodeType();
 	GuidGetNode->AllocateDefaultPins();
 
-	UEdGraphPin* GetReferenceInputPin = GetReferenceFunctionNode->FindPinChecked(FName("Guid"), EGPD_Input);
+	UEdGraphPin* GetReferenceInputPin = GetReferenceFunctionNode->FindPinChecked(PinName, EGPD_Input);
 	// Find the property on FSMNode. Can't use member name since it's protected.
 	UEdGraphPin* ValuePin = GuidGetNode->FindPinChecked(FName("PathGuid"));
 

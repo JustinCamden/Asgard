@@ -1,25 +1,29 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "SMSystemEditorModule.h"
+#include "AssetRegistryModule.h"
 #include "EdGraphUtilities.h"
 #include "Kismet2/KismetEditorUtilities.h"
 #include "MessageLogInitializationOptions.h"
 #include "MessageLogModule.h"
 #include "Commands/SMEditorCommands.h"
 #include "Compilers/SMKismetCompiler.h"
-#include "Graph/SMGraphFactory.h"
 #include "SMBlueprintAssetTypeActions.h"
 #include "KismetCompilerModule.h"
-#include "SMBlueprint.h"
+#include "Blueprints/SMBlueprint.h"
 #include "Configuration/SMEditorStyle.h"
 #include "Configuration/SMProjectEditorSettings.h"
 #include "ISettingsModule.h"
 #include "PropertyEditorModule.h"
 #include "Customization/SMEditorCustomization.h"
+#include "Framework/Notifications/NotificationManager.h"
 #include "Graph/Nodes/SMGraphNode_ConduitNode.h"
 #include "Graph/Nodes/SMGraphNode_StateMachineStateNode.h"
 #include "Graph/Nodes/SMGraphNode_TransitionEdge.h"
-#include "SMBlueprintEditorUtils.h"
-
+#include "Graph/SMGraphFactory.h"
+#include "Interfaces/IPluginManager.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
+#include "Utilities/SMVersionUtils.h"
+#include "Widgets/Notifications/SNotificationList.h"
 
 #define LOCTEXT_NAMESPACE "SMSystemEditorModule"
 
@@ -58,6 +62,12 @@ void FSMSystemEditorModule::StartupModule()
 	PropertyModule.RegisterCustomClassLayout(USMGraphNode_TransitionEdge::StaticClass()->GetFName(), FOnGetDetailCustomizationInstance::CreateStatic(&FSMTransitionEdgeCustomization::MakeInstance));
 	PropertyModule.RegisterCustomClassLayout(USMGraphNode_ConduitNode::StaticClass()->GetFName(), FOnGetDetailCustomizationInstance::CreateStatic(&FSMNodeCustomization::MakeInstance));
 	PropertyModule.RegisterCustomClassLayout(USMGraphNode_AnyStateNode::StaticClass()->GetFName(), FOnGetDetailCustomizationInstance::CreateStatic(&FSMNodeCustomization::MakeInstance));
+
+	// Covers all node instances.
+	PropertyModule.RegisterCustomClassLayout(USMNodeInstance::StaticClass()->GetFName(), FOnGetDetailCustomizationInstance::CreateStatic(&FSMNodeInstanceCustomization::MakeInstance));
+
+	// State stack.. forwards off requests to FSMNodeInstanceCustomization.
+	FSMStateStackCustomization::RegisterNewStruct(FStateStackContainer::StaticStruct()->GetFName());
 	
 	// Register asset categories.
 	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
@@ -84,6 +94,15 @@ void FSMSystemEditorModule::StartupModule()
 	
 	BeginPieHandle = FEditorDelegates::BeginPIE.AddRaw(this, &FSMSystemEditorModule::BeginPIE);
 	EndPieHandle = FEditorDelegates::EndPIE.AddRaw(this, &FSMSystemEditorModule::EndPie);
+
+	const USMProjectEditorSettings* ProjectEditorSettings = FSMBlueprintEditorUtils::GetProjectEditorSettings();
+	if (ProjectEditorSettings->bUpdateAssetsOnStartup)
+	{
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+		FilesLoadedHandle = AssetRegistryModule.Get().OnFilesLoaded().AddStatic(&FSMVersionUtils::UpdateBlueprintsToNewVersion);
+	}
+
+	DisplayUpdateNotification();
 }
 
 void FSMSystemEditorModule::ShutdownModule()
@@ -110,6 +129,11 @@ void FSMSystemEditorModule::ShutdownModule()
 	PropertyModule.UnregisterCustomClassLayout(USMGraphNode_StateNode::StaticClass()->GetFName());
 	PropertyModule.UnregisterCustomClassLayout(USMGraphNode_StateMachineStateNode::StaticClass()->GetFName());
 	PropertyModule.UnregisterCustomClassLayout(USMGraphNode_TransitionEdge::StaticClass()->GetFName());
+	PropertyModule.UnregisterCustomClassLayout(USMGraphNode_ConduitNode::StaticClass()->GetFName());
+	PropertyModule.UnregisterCustomClassLayout(USMGraphNode_AnyStateNode::StaticClass()->GetFName());
+	PropertyModule.UnregisterCustomClassLayout(USMNodeInstance::StaticClass()->GetFName());
+	
+	FSMStateStackCustomization::UnregisterAllStructs();
 	FSMGraphPropertyCustomization::UnregisterAllStructs();
 	
 	IKismetCompilerInterface& KismetCompilerModule = FModuleManager::GetModuleChecked<IKismetCompilerInterface>("KismetCompiler");
@@ -129,6 +153,12 @@ void FSMSystemEditorModule::ShutdownModule()
 
 	FEditorDelegates::BeginPIE.Remove(BeginPieHandle);
 	FEditorDelegates::EndPIE.Remove(EndPieHandle);
+
+	if (FilesLoadedHandle.IsValid() && FModuleManager::Get().IsModuleLoaded("AssetTools"))
+	{
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+		AssetRegistryModule.Get().OnFilesLoaded().Remove(FilesLoadedHandle);
+	}
 }
 
 void FSMSystemEditorModule::RegisterAssetTypeAction(IAssetTools& AssetTools, TSharedRef<IAssetTypeActions> Action)
@@ -176,6 +206,70 @@ void FSMSystemEditorModule::BeginPIE(bool bValue)
 void FSMSystemEditorModule::EndPie(bool bValue)
 {
 	bPlayingInEditor = false;
+}
+
+void FSMSystemEditorModule::DisplayUpdateNotification()
+{
+	const FString PluginName = "SMSystem";
+	IPluginManager& PluginManager = IPluginManager::Get();
+
+	TSharedPtr<IPlugin> Plugin = PluginManager.FindPlugin(PluginName);
+	if (Plugin->IsEnabled())
+	{
+		const FPluginDescriptor& Descriptor = Plugin->GetDescriptor();
+
+		USMProjectEditorSettings* ProjectEditorSettings = FSMBlueprintEditorUtils::GetMutableProjectEditorSettings();
+		if (ProjectEditorSettings->InstalledVersion != Descriptor.VersionName)
+		{
+			const bool bIsUpdate = ProjectEditorSettings->InstalledVersion.Len() > 0;
+			
+			ProjectEditorSettings->InstalledVersion = Descriptor.VersionName;
+			ProjectEditorSettings->SaveConfig();
+
+			if (ProjectEditorSettings->bDisplayUpdateNotification)
+			{
+				TArray<FString> PreviousInstalledPlugins;
+				GConfig->GetArray(TEXT("PluginBrowser"), TEXT("InstalledPlugins"), PreviousInstalledPlugins, GEditorPerProjectIni);
+
+				if (PreviousInstalledPlugins.Contains(PluginName))
+				{
+					// We only want to display the popup if the plugin was previously installed. Not always accurate so we check if there was a previous version.
+					
+					const FString DisplayString = !bIsUpdate ? FString::Printf(TEXT("Logic Driver version %s installed"), *Descriptor.VersionName) :
+															FString::Printf(TEXT("Logic Driver updated to version %s"), *Descriptor.VersionName);
+					FNotificationInfo Info(FText::FromString(DisplayString));
+					Info.bFireAndForget = false;
+					Info.bUseLargeFont = true;
+					Info.bUseThrobber = false;
+					Info.FadeOutDuration = 0.25f;
+					Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("LogicDriverUpdateViewPatchNotes", "View Patch Notes..."), LOCTEXT("LogicDriverUpdateViewPatchTT", "Open the webbrowser to view patch notes"), FSimpleDelegate::CreateRaw(this, &FSMSystemEditorModule::OnViewNewPatchNotesClicked)));
+					Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("LogicDriverUpdatePopupDismiss", "Dismiss"), LOCTEXT("LogicDriverUpdatePopupDismissTT", "Dismiss this notification"), FSimpleDelegate::CreateRaw(this, &FSMSystemEditorModule::OnDismissUpdateNotificationClicked)));
+
+					NewVersionNotification = FSlateNotificationManager::Get().AddNotification(Info);
+					NewVersionNotification.Pin()->SetCompletionState(SNotificationItem::CS_Pending);
+				}
+			}
+		}
+	}
+}
+
+void FSMSystemEditorModule::OnViewNewPatchNotesClicked()
+{
+	FString Version = FSMBlueprintEditorUtils::GetProjectEditorSettings()->InstalledVersion;
+
+	// Strip '.' out of version.
+	TArray<FString> VersionArray;
+	Version.ParseIntoArray(VersionArray, TEXT("."));
+	Version = FString::Join(VersionArray, TEXT(""));
+	
+	const FString Url = FString::Printf(TEXT("https://logicdriver.recursoft.net/docs/pages/prochangelog/#version-%s"), *Version);
+	FPlatformProcess::LaunchURL(*Url, nullptr, nullptr);
+	NewVersionNotification.Pin()->ExpireAndFadeout();
+}
+
+void FSMSystemEditorModule::OnDismissUpdateNotificationClicked()
+{
+	NewVersionNotification.Pin()->ExpireAndFadeout();
 }
 
 #undef LOCTEXT_NAMESPACE

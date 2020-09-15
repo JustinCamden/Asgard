@@ -6,7 +6,11 @@
 void FSMEditorCommands::RegisterCommands()
 {
 	UI_COMMAND(GoToGraph, "Go to Local Graph", "Open the graph this node contains within this blueprint", EUserInterfaceActionType::Button, FInputChord());
-	UI_COMMAND(GoToNodeBlueprint, "Edit Node Blueprint", "Edit the blueprint for this node if one is set", EUserInterfaceActionType::Button, FInputChord());
+	UI_COMMAND(GoToNodeBlueprint, "Open Node Blueprint", "Edit the blueprint for this node if one is set", EUserInterfaceActionType::Button, FInputChord());
+	UI_COMMAND(GoToPropertyBlueprint, "Open Property Blueprint", "Edit the blueprint for this property which could be the node blueprint or a state stack blueprint", EUserInterfaceActionType::Button, FInputChord());
+
+	UI_COMMAND(CutAndMergeStates, "Cut and Merge States", "Combine and stack multiple states into this state destroying the originals\nRequires selecting all desired states including the destination state which is the node this menu is opened for", EUserInterfaceActionType::Button, FInputChord());
+	UI_COMMAND(CopyAndMergeStates, "Copy and Merge States", "Combine and stack multiple states into this state preserving the originals\nRequires selecting all desired states including the destination state which is the node this menu is opened for", EUserInterfaceActionType::Button, FInputChord());
 	
 	UI_COMMAND(CreateSelfTransition, "Link to Self", "Creates a transition within the same state", EUserInterfaceActionType::Button, FInputChord());
 	UI_COMMAND(CollapseToStateMachine, "Collapse to State Machine", "Creates a nested state machine from existing nodes", EUserInterfaceActionType::Button, FInputChord());
@@ -18,7 +22,7 @@ void FSMEditorCommands::RegisterCommands()
 
 	UI_COMMAND(ReplaceWithStateMachine, "State Machine", "Destructively replace the selected node with an empty state machine", EUserInterfaceActionType::Button, FInputChord());
 	UI_COMMAND(ReplaceWithStateMachineParent, "State Machine Parent", "Destructively replace the selected node with the state machine parent", EUserInterfaceActionType::Button, FInputChord());
-	UI_COMMAND(ReplaceWithStateMachineReference, "State Machine Reference", "Destructively replace the selected node with an invalid state machine reference. Set the reference after using 'Change State Machine Reference'",
+	UI_COMMAND(ReplaceWithStateMachineReference, "State Machine Reference", "Destructively replace the selected node with an invalid state machine reference\nSet the reference after using 'Change State Machine Reference'",
 		EUserInterfaceActionType::Button, FInputChord());
 	UI_COMMAND(ReplaceWithState, "State", "Destructively replace the selected node with an empty state", EUserInterfaceActionType::Button, FInputChord());
 	UI_COMMAND(ReplaceWithConduit, "Conduit", "Destructively replace the selected node with a conduit", EUserInterfaceActionType::Button, FInputChord());

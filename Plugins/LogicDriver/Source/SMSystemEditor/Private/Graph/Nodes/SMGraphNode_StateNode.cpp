@@ -1,15 +1,20 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "SMGraphNode_StateNode.h"
 #include "Kismet2/Kismet2NameValidators.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "SMGraphNode_TransitionEdge.h"
+#include "Utilities/SMNodeInstanceUtils.h"
+#include "SMUtils.h"
+#include "Engine/Engine.h"
 #include "Graph/SMGraph.h"
 #include "Graph/SMStateGraph.h"
 #include "Graph/Schema/SMStateGraphSchema.h"
+#include "Helpers/SMGraphK2Node_FunctionNodes_NodeInstance.h"
 #include "RootNodes/SMGraphK2Node_StateUpdateNode.h"
 #include "RootNodes/SMGraphK2Node_StateEndNode.h"
 #include "RootNodes/SMGraphK2Node_IntermediateNodes.h"
-#include "Helpers/SMGraphK2Node_FunctionNodes_NodeInstance.h"
+#include "RootNodes/SMGraphK2Node_TransitionInitializedNode.h"
+#include "RootNodes/SMGraphK2Node_TransitionShutdownNode.h"
 
 #define LOCTEXT_NAMESPACE "SMGraphStateNode"
 
@@ -34,7 +39,7 @@ public:
 	}
 
 	// Begin FSMStateNodeNameValidator
-	EValidatorResult IsValid(const FString& Name, bool bOriginal) override
+	virtual EValidatorResult IsValid(const FString& Name, bool bOriginal) override
 	{
 		EValidatorResult Result = FStringSetNameValidator::IsValid(Name, bOriginal);
 
@@ -95,7 +100,7 @@ bool USMGraphNode_StateNodeBase::IsEndState(bool bCheckAnyState) const
 		if (USMGraphNode_TransitionEdge* Transition = Cast<USMGraphNode_TransitionEdge>(Pin->GetOwningNode()))
 		{
 			// Transitioning to self doesn't count.
-			if(Transition->GetStartNode() == Transition->GetEndNode())
+			if(Transition->GetFromState() == Transition->GetToState())
 			{
 				continue;
 			}
@@ -130,7 +135,7 @@ bool USMGraphNode_StateNodeBase::HasInputConnections() const
 			if (USMGraphNode_TransitionEdge* Transition = Cast<USMGraphNode_TransitionEdge>(InputPin->GetOwningNode()))
 			{
 				// Ignore self and input connections which can't transition.
-				if (Transition->GetStartNode() == Transition->GetEndNode() || !Transition->PossibleToTransition())
+				if (Transition->GetFromState() == Transition->GetToState() || !Transition->PossibleToTransition())
 				{
 					continue;
 				}
@@ -179,7 +184,7 @@ bool USMGraphNode_StateNodeBase::HasTransitionToNode(UEdGraphNode* Node) const
 	{
 		if (USMGraphNode_TransitionEdge* Transition = Cast<USMGraphNode_TransitionEdge>(OutputPin->GetOwningNode()))
 		{
-			if (Transition->GetEndNode() == Node)
+			if (Transition->GetToState() == Node)
 			{
 				return true;
 			}
@@ -197,7 +202,7 @@ bool USMGraphNode_StateNodeBase::HasTransitionFromNode(UEdGraphNode* Node) const
 		{
 			if (USMGraphNode_TransitionEdge* Transition = Cast<USMGraphNode_TransitionEdge>(Pin->GetOwningNode()))
 			{
-				if (Transition->GetStartNode() == Node)
+				if (Transition->GetFromState() == Node)
 				{
 					return true;
 				}
@@ -212,7 +217,7 @@ USMGraphNode_StateNodeBase* USMGraphNode_StateNodeBase::GetPreviousNode(int32 In
 {
 	if (USMGraphNode_TransitionEdge* Transition = GetPreviousTransition(Index))
 	{
-		return Transition->GetStartNode();
+		return Transition->GetFromState();
 	}
 
 	return nullptr;
@@ -222,7 +227,7 @@ USMGraphNode_StateNodeBase* USMGraphNode_StateNodeBase::GetNextNode(int32 Index 
 {
 	if (USMGraphNode_TransitionEdge* Transition = GetNextTransition(Index))
 	{
-		return Transition->GetEndNode();
+		return Transition->GetToState();
 	}
 
 	return nullptr;
@@ -247,17 +252,93 @@ USMGraphNode_TransitionEdge* USMGraphNode_StateNodeBase::GetPreviousTransition(i
 
 USMGraphNode_TransitionEdge* USMGraphNode_StateNodeBase::GetNextTransition(int32 Index) const
 {
-	if (GetOutputPin()->LinkedTo.Num() <= Index)
+	if (UEdGraphPin* OutputPin = GetOutputPin())
 	{
-		return nullptr;
-	}
+		if (OutputPin->LinkedTo.Num() <= Index)
+		{
+			return nullptr;
+		}
 
-	if (USMGraphNode_TransitionEdge* Transition = Cast<USMGraphNode_TransitionEdge>(GetOutputPin()->LinkedTo[Index]->GetOwningNode()))
-	{
-		return Transition;
+		if (USMGraphNode_TransitionEdge* Transition = Cast<USMGraphNode_TransitionEdge>(OutputPin->LinkedTo[Index]->GetOwningNode()))
+		{
+			return Transition;
+		}
 	}
 
 	return nullptr;
+}
+
+void USMGraphNode_StateNodeBase::GetInputTransitions(TArray<USMGraphNode_TransitionEdge*>& OutTransitions) const
+{
+	if (UEdGraphPin* InputPin = GetInputPin())
+	{
+		for (int32 Idx = 0; Idx < InputPin->LinkedTo.Num(); ++Idx)
+		{
+			if (USMGraphNode_TransitionEdge* Transition = Cast<USMGraphNode_TransitionEdge>(InputPin->LinkedTo[Idx]->GetOwningNode()))
+			{
+				OutTransitions.AddUnique(Transition);
+			}
+		}
+	}
+}
+
+void USMGraphNode_StateNodeBase::GetOutputTransitions(TArray<USMGraphNode_TransitionEdge*>& OutTransitions) const
+{
+	if (UEdGraphPin* OutputPin = GetOutputPin())
+	{
+		for (int32 Idx = 0; Idx < OutputPin->LinkedTo.Num(); ++Idx)
+		{
+			if (USMGraphNode_TransitionEdge* Transition = Cast<USMGraphNode_TransitionEdge>(OutputPin->LinkedTo[Idx]->GetOwningNode()))
+			{
+				OutTransitions.AddUnique(Transition);
+			}
+		}
+	}
+}
+
+UEdGraphPin* USMGraphNode_StateNodeBase::GetConnectedEntryPin() const
+{
+	if (UEdGraphPin* InputPin = GetInputPin())
+	{
+		for (int32 Idx = 0; Idx < InputPin->LinkedTo.Num(); ++Idx)
+		{
+			if (InputPin->LinkedTo[Idx]->GetOwningNode()->IsA<USMGraphNode_StateMachineEntryNode>())
+			{
+				return InputPin->LinkedTo[Idx];
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+FLinearColor USMGraphNode_StateNodeBase::GetBackgroundColorForNodeInstance(USMNodeInstance* NodeInstance) const
+{
+	const USMEditorSettings* Settings = FSMBlueprintEditorUtils::GetEditorSettings();
+	const FLinearColor* CustomColor = GetCustomBackgroundColor(NodeInstance);
+	const FLinearColor ColorModifier = !CustomColor ? FLinearColor(0.6f, 0.6f, 0.6f, 0.5f) : *CustomColor;
+	const FLinearColor EndStateColor = !CustomColor ? Settings->EndStateColor * ColorModifier : CastChecked<USMStateInstance>(NodeInstance)->GetEndStateColor();
+
+	if (IsEndState())
+	{
+		return EndStateColor;
+	}
+
+	const FLinearColor DefaultColor = Settings->StateDefaultColor;
+
+	// No input -- node unreachable.
+	if (!HasInputConnections())
+	{
+		return DefaultColor * ColorModifier;
+	}
+
+	// State is active
+	if (FSMBlueprintEditorUtils::GraphHasAnyLogicConnections(BoundGraph))
+	{
+		return CustomColor ? *CustomColor * FLinearColor(1.f, 1.f, 1.f, 1.2f) : Settings->StateWithLogicColor * ColorModifier;
+	}
+
+	return DefaultColor * ColorModifier;
 }
 
 FText USMGraphNode_StateNodeBase::GetNodeTitle(ENodeTitleType::Type TitleType) const
@@ -415,31 +496,63 @@ void USMGraphNode_StateNodeBase::SetRuntimeDefaults(FSMState_Base& State) const
 
 FLinearColor USMGraphNode_StateNodeBase::Internal_GetBackgroundColor() const
 {
-	const USMEditorSettings* Settings = FSMBlueprintEditorUtils::GetEditorSettings();
-	const FLinearColor* CustomColor = GetCustomBackgroundColor();
-	const FLinearColor ColorModifier = !CustomColor ? FLinearColor(0.6f, 0.6f, 0.6f, 0.5f) : *CustomColor;
-	const FLinearColor EndStateColor = !CustomColor ? Settings->EndStateColor * ColorModifier : CastChecked<USMStateInstance>(NodeInstanceTemplate)->GetEndStateColor();
+	return GetBackgroundColorForNodeInstance(NodeInstanceTemplate);
+}
+
+void FStateStackContainer::InitTemplate(UObject* Owner, bool bForceInit, bool bForceNewGuid)
+{
+	if (StateStackClass == nullptr)
+	{
+		DestroyTemplate();
+		return;
+	}
+
+	if (!bForceInit && NodeStackInstanceTemplate && NodeStackInstanceTemplate->GetClass() == StateStackClass)
+	{
+		return;
+	}
+
+	Owner->Modify();
+
+	if (bForceNewGuid || !TemplateGuid.IsValid())
+	{
+		TemplateGuid = FGuid::NewGuid();
+	}
+
+	FString NodeName = Owner->GetName();
+	NodeName = FSMBlueprintEditorUtils::GetSafeName(NodeName);
 	
-	if (IsEndState())
+	const FString TemplateName = FString::Printf(TEXT("NODE_STACK_TEMPLATE_%s_%s_%s"), *NodeName, *StateStackClass->GetName(), *TemplateGuid.ToString());
+	USMStateInstance* NewTemplate = StateStackClass ? NewObject<USMStateInstance>(Owner, StateStackClass, *TemplateName, RF_ArchetypeObject | RF_Transactional | RF_Public) : nullptr;
+
+	if (NodeStackInstanceTemplate)
 	{
-		return EndStateColor;
+		if (NewTemplate && NewTemplate->GetClass() == NodeStackInstanceTemplate->GetClass())
+		{
+			// Only copy when they're the same class. Causes problems when there's a common base class between the new node template and original template. Packaging won't find the template.
+			UEngine::CopyPropertiesForUnrelatedObjects(NodeStackInstanceTemplate, NewTemplate);
+		}
+
+		// Original template isn't needed any more.
+		DestroyTemplate();
 	}
 
-	const FLinearColor DefaultColor = Settings->StateDefaultColor;
-
-	// No input -- node unreachable.
-	if (!HasInputConnections())
+	NodeStackInstanceTemplate = NewTemplate;
+	if (NodeStackInstanceTemplate)
 	{
-		return DefaultColor * ColorModifier;
+		NodeStackInstanceTemplate->SetTemplateGuid(TemplateGuid);
+		NodeStackInstanceTemplate->ConstructionScript();
 	}
+}
 
-	// State is active
-	if (FSMBlueprintEditorUtils::GraphHasAnyLogicConnections(BoundGraph))
+void FStateStackContainer::DestroyTemplate()
+{
+	if (NodeStackInstanceTemplate)
 	{
-		return CustomColor ? *CustomColor * FLinearColor(1.f, 1.f, 1.f, 1.2f) : Settings->StateWithLogicColor * ColorModifier;
+		NodeStackInstanceTemplate->Modify();
+		FSMBlueprintEditorUtils::TrashObject(NodeStackInstanceTemplate);
+		NodeStackInstanceTemplate = nullptr;
 	}
-
-	return DefaultColor * ColorModifier;
 }
 
 
@@ -460,7 +573,61 @@ void USMGraphNode_StateNode::PostEditChangeProperty(FPropertyChangedEvent& Prope
 
 		bStateChange = true;
 	}
+	else if (PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(USMGraphNode_StateNode, StateStack) || PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(FStateStackContainer, StateStackClass))
+	{
+		if (PropertyChangedEvent.ChangeType == EPropertyChangeType::Duplicate)
+		{
+			// Array element duplication requires a new template generated.
+			const int32 ArrayIndex = PropertyChangedEvent.GetArrayIndex(PropertyChangedEvent.GetPropertyName().ToString());
+			if (ArrayIndex >= 0 && ArrayIndex + 1 < StateStack.Num())
+			{
+				const FStateStackContainer& OriginalStateStack = StateStack[ArrayIndex];
+				FStateStackContainer& NewStateStack = StateStack[ArrayIndex + 1];
 
+				NewStateStack.TemplateGuid = FGuid::NewGuid();
+				if (OriginalStateStack.NodeStackInstanceTemplate && OriginalStateStack.NodeStackInstanceTemplate->GetClass() != GetDefaultNodeClass())
+				{
+					if (NewStateStack.NodeStackInstanceTemplate != OriginalStateStack.NodeStackInstanceTemplate)
+					{
+						// This state *shouldn't* exist because the object isn't deep copied, but who knows if USTRUCT UPROPERTY UObject handling changes?
+						NewStateStack.DestroyTemplate();
+					}
+					
+					NewStateStack.NodeStackInstanceTemplate = Cast<USMNodeInstance>(StaticDuplicateObject(OriginalStateStack.NodeStackInstanceTemplate, OriginalStateStack.NodeStackInstanceTemplate->GetOuter()));
+					UEngine::CopyPropertiesForUnrelatedObjects(OriginalStateStack.NodeStackInstanceTemplate, NewStateStack.NodeStackInstanceTemplate);
+					NewStateStack.NodeStackInstanceTemplate->SetTemplateGuid(NewStateStack.TemplateGuid);
+
+					for (TFieldIterator<FProperty> It(NewStateStack.NodeStackInstanceTemplate->GetClass()); It; ++It)
+					{
+						// Look for real graph properties (not auto generated from a variable), they won't have had their guids cleared.
+						
+						FProperty* Property = *It;
+
+						FName VarName = Property->GetFName();
+						if (VarName == GET_MEMBER_NAME_CHECKED(USMNodeInstance, ExposedPropertyOverrides))
+						{
+							continue;
+						}
+
+						if (FStructProperty* StructProperty = FSMNodeInstanceUtils::IsPropertyGraphProperty(Property))
+						{
+							TArray<FSMGraphProperty_Base*> GraphProperties;
+							USMUtils::BlueprintPropertyToNativeProperty(Property, NewStateStack.NodeStackInstanceTemplate, GraphProperties);
+							for (FSMGraphProperty_Base* GraphProperty : GraphProperties)
+							{
+								GraphProperty->InvalidateGuid();
+							}
+						}
+					}
+
+					FSMBlueprintEditorUtils::DuplicateStackTemplatePropertyGraphs(this, this, NewStateStack, OriginalStateStack.TemplateGuid);
+				}
+			}
+		}
+		
+		InitStateStack();
+	}
+	
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 	bCreatePropertyGraphsOnPropertyChange = true;
 
@@ -486,12 +653,87 @@ void USMGraphNode_StateNode::PlaceDefaultInstanceNodes()
 	// Optional nodes.
 	FSMBlueprintEditorUtils::SetupDefaultPassthroughNodes<USMGraphK2Node_IntermediateStateMachineStartNode, USMGraphK2Node_StateInstance_StateMachineStart>(BoundGraph);
 	FSMBlueprintEditorUtils::SetupDefaultPassthroughNodes<USMGraphK2Node_IntermediateStateMachineStopNode, USMGraphK2Node_StateInstance_StateMachineStop>(BoundGraph);
+
+	FSMBlueprintEditorUtils::SetupDefaultPassthroughNodes<USMGraphK2Node_TransitionInitializedNode, USMGraphK2Node_StateInstance_OnStateInitialized>(BoundGraph);
+	FSMBlueprintEditorUtils::SetupDefaultPassthroughNodes<USMGraphK2Node_TransitionShutdownNode, USMGraphK2Node_StateInstance_OnStateShutdown>(BoundGraph);
 }
 
 void USMGraphNode_StateNode::SetNodeClass(UClass* Class)
 {
 	StateClass = Class;
 	Super::SetNodeClass(Class);
+}
+
+void USMGraphNode_StateNode::InitTemplate()
+{
+	Super::InitTemplate();
+}
+
+void USMGraphNode_StateNode::OnCompile(FSMKismetCompilerContext& CompilerContext)
+{
+	Super::OnCompile(CompilerContext);
+
+	const TArray<FStateStackContainer>& Templates = GetAllNodeStackTemplates();
+
+	if (Templates.Num() > 0)
+	{
+		FSMNode_Base* RuntimeNode = FSMBlueprintEditorUtils::GetRuntimeNodeFromGraph(BoundGraph);
+		check(RuntimeNode);
+
+		for (const FStateStackContainer& Template : Templates)
+		{
+			if (Template.NodeStackInstanceTemplate && GetDefaultNodeClass() != Template.StateStackClass)
+			{
+				CompilerContext.AddDefaultObjectTemplate(RuntimeNode->GetNodeGuid(), Template.NodeStackInstanceTemplate, FTemplateContainer::StackTemplate, Template.TemplateGuid);
+			}
+		}
+	}
+}
+
+const TArray<FStateStackContainer>& USMGraphNode_StateNode::GetAllNodeStackTemplates() const
+{
+	return StateStack;
+}
+
+int32 USMGraphNode_StateNode::GetIndexOfTemplate(const FGuid& TemplateGuid) const
+{
+	for (int32 Idx = 0; Idx < StateStack.Num(); ++Idx)
+	{
+		if (StateStack[Idx].TemplateGuid == TemplateGuid)
+		{
+			return Idx;
+		}
+	}
+
+	return -1;
+}
+
+USMNodeInstance* USMGraphNode_StateNode::GetTemplateFromIndex(int32 Index) const
+{
+	if (Index >= 0 && Index < StateStack.Num())
+	{
+		return StateStack[Index].NodeStackInstanceTemplate;
+	}
+
+	return nullptr;
+}
+
+void USMGraphNode_StateNode::InitStateStack()
+{
+	for (FStateStackContainer& StateContainer : StateStack)
+	{
+		StateContainer.InitTemplate(this);
+	}
+}
+
+void USMGraphNode_StateNode::DestroyStateStack()
+{
+	for (FStateStackContainer& StateContainer : StateStack)
+	{
+		StateContainer.DestroyTemplate();
+	}
+
+	StateStack.Reset();
 }
 
 

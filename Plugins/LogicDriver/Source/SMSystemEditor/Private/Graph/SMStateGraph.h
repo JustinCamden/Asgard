@@ -18,7 +18,7 @@ public:
 	virtual USMGraphNode_StateNodeBase* GetOwningStateNode() const;
 
 	// USMGraphK2
-	FSMNode_Base* GetRuntimeNode() const override { return EntryNode->GetRunTimeNode(); }
+	virtual FSMNode_Base* GetRuntimeNode() const override { return EntryNode->GetRunTimeNode(); }
 	// ~USMGraphK2
 public:
 	UPROPERTY()

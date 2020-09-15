@@ -9,13 +9,13 @@
 #include "RootNodes/SMGraphK2Node_TransitionShutdownNode.h"
 #include "RootNodes/SMGraphK2Node_TransitionEnteredNode.h"
 #include "Helpers/SMGraphK2Node_FunctionNodes_NodeInstance.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 
 
 #define LOCTEXT_NAMESPACE "SMGraphConduitNode"
 
 USMGraphNode_ConduitNode::USMGraphNode_ConduitNode(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer), bEvalWithTransitions_DEPRECATED(false)
+	: Super(ObjectInitializer), bEvalWithTransitions_DEPRECATED(false), bWasEvaluating(false)
 {
 }
 
@@ -28,19 +28,6 @@ void USMGraphNode_ConduitNode::AllocateDefaultPins()
 FText USMGraphNode_ConduitNode::GetTooltipText() const
 {
 	return LOCTEXT("ConduitNodeTooltip", "A conduit allows a single condition to be checked before selecting one of many transitions.");
-}
-
-void USMGraphNode_ConduitNode::AutowireNewNode(UEdGraphPin* FromPin)
-{
-	Super::AutowireNewNode(FromPin);
-
-	if (FromPin != nullptr)
-	{
-		if (GetSchema()->TryCreateConnection(FromPin, GetInputPin()))
-		{
-			FromPin->GetOwningNode()->NodeConnectionListChanged();
-		}
-	}
 }
 
 void USMGraphNode_ConduitNode::PostPlacedNewNode()
@@ -104,6 +91,48 @@ void USMGraphNode_ConduitNode::PostEditChangeProperty(FPropertyChangedEvent& Pro
 	}
 }
 
+void USMGraphNode_ConduitNode::ResetDebugState()
+{
+	Super::ResetDebugState();
+
+	// Prevents a previous cycle from showing it as running.
+	if (const FSMConduit* DebugNode = (FSMConduit*)GetDebugNode())
+	{
+		const_cast<FSMConduit*>(DebugNode)->bWasEvaluating = bWasEvaluating = false;
+	}
+}
+
+void USMGraphNode_ConduitNode::UpdateTime(float DeltaTime)
+{
+	const USMEditorSettings* Settings = FSMBlueprintEditorUtils::GetEditorSettings();
+	if (ShouldEvalWithTransitions() && Settings->bDisplayTransitionEvaluation)
+	{
+		if (const FSMConduit* DebugNode = (FSMConduit*)GetDebugNode())
+		{
+			if (WasEvaluating() && (DebugNode->IsActive() || DebugNode->bWasActive))
+			{
+				// Cancel evaluation display and let the super method reset.
+				bWasEvaluating = false;
+				bWasDebugActive = false;
+			}
+			else if (DebugNode->bIsEvaluating || DebugNode->bWasEvaluating)
+			{
+				// Not active but evaluating.
+				bIsDebugActive = true;
+				bWasEvaluating = true;
+			}
+			const_cast<FSMConduit*>(DebugNode)->bWasEvaluating = false;
+		}
+	}
+
+	Super::UpdateTime(DeltaTime);
+
+	if (!WasDebugNodeActive())
+	{
+		bWasEvaluating = false;
+	}
+}
+
 void USMGraphNode_ConduitNode::ImportDeprecatedProperties()
 {
 	Super::ImportDeprecatedProperties();
@@ -144,6 +173,37 @@ void USMGraphNode_ConduitNode::SetRuntimeDefaults(FSMState_Base& State) const
 {
 	Super::SetRuntimeDefaults(State);
 	((FSMConduit&)State).bEvalWithTransitions = ShouldEvalWithTransitions();
+	if(USMConduitInstance* Instance = Cast<USMConduitInstance>(GetNodeTemplate()))
+	{
+		((FSMConduit&)State).bCanEvaluate = Instance->bCanEvaluate;
+	}
+}
+
+FLinearColor USMGraphNode_ConduitNode::GetActiveBackgroundColor() const
+{
+	const FLinearColor BaseColor = Super::GetActiveBackgroundColor();
+	
+	if (ShouldEvalWithTransitions())
+	{
+		const USMEditorSettings* Settings = FSMBlueprintEditorUtils::GetEditorSettings();
+		if (Settings->bDisplayTransitionEvaluation)
+		{
+			if (const FSMConduit* DebugNode = (FSMConduit*)GetDebugNode())
+			{
+				if (DebugNode->bIsEvaluating || bWasEvaluating)
+				{
+					const float TimeToFade = 0.7f;
+					const float DebugTime = GetDebugTime();
+					if (DebugTime < TimeToFade)
+					{
+						return FLinearColor::LerpUsingHSV(Settings->EvaluatingTransitionColor, BaseColor, DebugTime / TimeToFade);
+					}
+				}
+			}
+		}
+	}
+
+	return BaseColor;
 }
 
 bool USMGraphNode_ConduitNode::ShouldEvalWithTransitions() const

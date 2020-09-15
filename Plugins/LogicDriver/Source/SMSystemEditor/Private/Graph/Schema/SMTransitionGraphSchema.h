@@ -14,11 +14,11 @@ class SMSYSTEMEDITOR_API USMTransitionGraphSchema : public USMGraphK2Schema
 	GENERATED_UCLASS_BODY()
 
 	//~ Begin UEdGraphSchema Interface.
-	void CreateDefaultNodesForGraph(UEdGraph& Graph) const override;
-	void GetGraphDisplayInformation(const UEdGraph& Graph, /*out*/ FGraphDisplayInfo& DisplayInfo) const override;
-	bool DoesSupportEventDispatcher() const	override { return false; }
-	bool ShouldAlwaysPurgeOnModification() const override { return true; }
-	bool CanDuplicateGraph(UEdGraph* InSourceGraph) const override { return false; }
-	void HandleGraphBeingDeleted(UEdGraph& GraphBeingRemoved) const override;
+	virtual void CreateDefaultNodesForGraph(UEdGraph& Graph) const override;
+	virtual void GetGraphDisplayInformation(const UEdGraph& Graph, /*out*/ FGraphDisplayInfo& DisplayInfo) const override;
+	virtual bool DoesSupportEventDispatcher() const	override { return false; }
+	virtual bool ShouldAlwaysPurgeOnModification() const override { return true; }
+	virtual bool CanDuplicateGraph(UEdGraph* InSourceGraph) const override { return false; }
+	virtual void HandleGraphBeingDeleted(UEdGraph& GraphBeingRemoved) const override;
 	//~ End UEdGraphSchema Interface.
 };

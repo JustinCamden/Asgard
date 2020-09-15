@@ -10,7 +10,7 @@
 #include "GraphEditorActions.h"
 #include "BlueprintEditorSettings.h"
 #include "SMBlueprintEditor.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "Graph/Nodes/RootNodes/SMGraphK2Node_RootNode.h"
 #include "Graph/Nodes/SMGraphK2Node_StateMachineNode.h"
 #include "Graph/Nodes/RootNodes/SMGraphK2Node_StateMachineSelectNode.h"

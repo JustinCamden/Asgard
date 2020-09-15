@@ -1,6 +1,6 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "SMPropertyGraphSchema.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "Graph/Nodes/PropertyNodes/SMGraphK2Node_GraphPropertyNode.h"
 
 #define LOCTEXT_NAMESPACE "SMPropertyGraphSchema"

@@ -1,6 +1,6 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "SMGraphNode_StateMachineParentNode.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "Kismet2/KismetEditorUtilities.h"
 
 

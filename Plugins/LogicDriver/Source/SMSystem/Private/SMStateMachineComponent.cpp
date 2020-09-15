@@ -1,10 +1,10 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 
 #include "SMStateMachineComponent.h"
-
 #include "UObject/PropertyPortFlags.h"
 #include "Engine/Engine.h"
 #include "SMUtils.h"
+#include "SMLogging.h"
 
 #define LOCTEXT_NAMESPACE "SMStateMachineComponent"
 
@@ -50,32 +50,36 @@ void USMStateMachineComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 
 void USMStateMachineComponent::BeginPlay()
 {
-	Super::BeginPlay();
-
-	if (!bInitializeOnBeginPlay)
+	if (bInitializeOnBeginPlay)
 	{
-		return;
-	}
-
-	if (HasAuthority())
-	{
-		DoInitialize(GetOwner());
-
-		if (bStartOnBeginPlay)
+		if (HasAuthority())
 		{
-			DoStart();
+			DoInitialize(GetOwner());
+
+			if (bStartOnBeginPlay)
+			{
+				DoStart();
+			}
 		}
 	}
+
+	// Blueprint BeginPlay is called here.
+	Super::BeginPlay();
 }
 
 void USMStateMachineComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 	FActorComponentTickFunction* ThisTickFunction)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
 	if (R_Instance && CanTickForEnvironment())
 	{
+		DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMStateMachineComponent::Tick"), STAT_SMStateMachineComponent_Tick, STATGROUP_LogicDriver);
 		R_Instance->Tick(DeltaTime);
+	}
+	
+	if (IsRegistered())
+	{
+		// If R_Instance tick destroys the actor then we won't be registered. Blueprint Tick is called here.
+		Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	}
 }
 
@@ -139,7 +143,7 @@ void USMStateMachineComponent::Serialize(FArchive& Ar)
 		if (GIsEditor && Ar.IsSaving() && HasAnyFlags(RF_InheritableComponentTemplate))
 		{
 			// The component template is serializing for a child to use.
-			if (!InstanceTemplate)
+			if (!InstanceTemplate && StateMachineClass)
 			{
 				/*
 				 * The template has DuplicateTransient set so it should be null at this point. We can find the right one from the archetype.
@@ -148,30 +152,64 @@ void USMStateMachineComponent::Serialize(FArchive& Ar)
 				 */
 				if (USMInstance* ArchetypeTemplate = Cast<USMStateMachineComponent>(GetArchetype())->InstanceTemplate)
 				{
-					InstanceTemplate = CastChecked<USMInstance>(StaticDuplicateObject(ArchetypeTemplate, this, NAME_None));
+					if (StateMachineClass == ArchetypeTemplate->GetClass())
+					{
+						InstanceTemplate = CastChecked<USMInstance>(StaticDuplicateObject(ArchetypeTemplate, this, NAME_None));
+					}
 				}
 			}
 		}
 	}
 
 #if WITH_EDITOR
-	if (!Ar.IsPersistent() && InstanceTemplate)
+	if (GIsEditor) // Necessary for new process PIE session.
 	{
-		if (IsTemplate())
+		if (!Ar.IsPersistent() && InstanceTemplate)
 		{
-			// Duplicate the instance. (Works when duplicate is clicked on the component, but not paste)
-			if (InstanceTemplate->GetOuter() != this)
+			if (IsTemplate())
 			{
-				InstanceTemplate = CastChecked<USMInstance>(StaticDuplicateObject(InstanceTemplate, this, NAME_None));
+				// InstanceTemplate should belong to components that are templates.
+				if (InstanceTemplate->GetOuter() != this)
+				{
+					if (UObject* ExistingTemplate = StaticFindObject(nullptr, this, *InstanceTemplate->GetName()))
+					{
+						// Find an already existing template we should own... can happen if this is a child component whos class was recompiled.
+						InstanceTemplate = CastChecked<USMInstance>(ExistingTemplate);
+					}
+					else
+					{
+						// Duplicate the instance. (Works when duplicate is clicked on the component, but not paste)
+						InstanceTemplate = CastChecked<USMInstance>(StaticDuplicateObject(InstanceTemplate, this, NAME_None));
+					}
+				}
+			}
+			else
+			{
+				// Because the template may have fixed itself up, the tagged property delta serialized for 
+				// the instance may point at a trashed template, so always repoint us to the archetypes template
+				InstanceTemplate = CastChecked<USMStateMachineComponent>(GetArchetype())->InstanceTemplate;
 			}
 		}
-		else
+
+		/**
+		 * If a component doesn't have a template but is supposed to then try to find its default.
+		 * This helps child components not inheriting their template when added to an actor.
+		 */
+		if (Ar.IsSaving() && IsTemplate(RF_ArchetypeObject) && !InstanceTemplate && StateMachineClass)
 		{
-			// Because the template may have fixed itself up, the tagged property delta serialized for 
-			// the instance may point at a trashed template, so always repoint us to the archetypes template
-			InstanceTemplate = CastChecked<USMStateMachineComponent>(GetArchetype())->InstanceTemplate;
+			if (USMStateMachineComponent* Archetype = Cast<USMStateMachineComponent>(GetArchetype()))
+			{
+				if (StateMachineClass == Archetype->StateMachineClass)
+				{
+					if (USMInstance* Template = Archetype->InstanceTemplate)
+					{
+						InstanceTemplate = Cast<USMInstance>(StaticDuplicateObject(Template, this, NAME_None));
+					}
+				}
+			}
 		}
 	}
+	
 #endif
 }
 
@@ -233,7 +271,7 @@ bool USMStateMachineComponent::IsNetworked() const
 
 bool USMStateMachineComponent::HasAuthority() const
 {
-	return !IsNetworked() || IsListenServer() || GetOwnerRole() == ROLE_Authority;
+	return !IsConfiguredForNetworking() || IsListenServer() || GetOwnerRole() == ROLE_Authority;
 }
 
 bool USMStateMachineComponent::IsProxy() const

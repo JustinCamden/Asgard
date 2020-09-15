@@ -427,9 +427,9 @@ void UVRSimpleCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 
 
 		if (bDeltaMoveNearlyZero && bSameNavLocation)
 		{
-			if (const INavigationDataInterface * ProjectionNavData = GetNavData())
+			if (const INavigationDataInterface * NavData = GetNavData())
 			{
-				if (!ProjectionNavData->IsNodeRefValid(CachedNavLocation.NodeRef))
+				if (!NavData->IsNodeRefValid(CachedNavLocation.NodeRef))
 				{
 					CachedNavLocation.NodeRef = INVALID_NAVNODEREF;
 					bSameNavLocation = false;
@@ -1369,7 +1369,7 @@ void UVRSimpleCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime,
 				// Avoid updating Mesh bones to physics during the teleport back, since PerformMovement() will update it right away anyway below.
 				// Note: this must be before the FScopedMovementUpdate below, since that scope is what actually moves the character and mesh.
 				AVRBaseCharacter * BaseCharacter = Cast<AVRBaseCharacter>(CharacterOwner);
-				FScopedMeshBoneUpdateOverrideVR ScopedNoMeshBoneUpdate(BaseCharacter != nullptr ? BaseCharacter->GetIKMesh() : CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
+				FScopedMeshBoneUpdateOverrideVR ScopedNoMeshBoneUpdate(CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
 
 				// Accumulate multiple transform updates until scope ends.
 				FScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, EScopedUpdate::DeferredUpdates);
@@ -1490,7 +1490,7 @@ FNetworkPredictionData_Client* UVRSimpleCharacterMovementComponent::GetPredictio
 {
 	// Should only be called on client or listen server (for remote clients) in network games
 	check(CharacterOwner != NULL);
-	checkSlow(CharacterOwner->Role < ROLE_Authority || (CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy && GetNetMode() == NM_ListenServer));
+	checkSlow(CharacterOwner->GetLocalRole() < ROLE_Authority || (CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy && GetNetMode() == NM_ListenServer));
 	checkSlow(GetNetMode() == NM_Client || GetNetMode() == NM_ListenServer);
 
 	if (!ClientPredictionData)
@@ -1673,7 +1673,21 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
 	check(ServerData);
 
-	if (!VerifyClientTimeStamp(TimeStamp, *ServerData))
+	bool bAutoAcceptPacket = false;
+
+	if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+	{
+		return;
+	}
+	else if (bJustUnseated)
+	{
+		ServerData->CurrentClientTimeStamp = TimeStamp;
+		bAutoAcceptPacket = true;
+		bJustUnseated = false;
+	}
+
+
+	if (!bAutoAcceptPacket && !VerifyClientTimeStamp(TimeStamp, *ServerData))
 	{
 		const float ServerTimeStamp = ServerData->CurrentClientTimeStamp;
 		// This is more severe if the timestamp has a large discrepancy and hasn't been recently reset.

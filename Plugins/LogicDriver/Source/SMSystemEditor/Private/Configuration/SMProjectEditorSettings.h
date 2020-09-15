@@ -5,7 +5,7 @@
 #include "SMProjectEditorSettings.generated.h"
 
 
-UCLASS(config = Editor, defaultconfig)
+UCLASS(config = Editor)
 class USMProjectEditorSettings : public UObject
 {
 	GENERATED_BODY()
@@ -13,6 +13,27 @@ class USMProjectEditorSettings : public UObject
 public:
 	USMProjectEditorSettings();
 
+	UPROPERTY(config, VisibleAnywhere, Category = "Version Updates")
+	FString InstalledVersion;
+	
+	/**
+	 * Automatically update assets saved by older versions to the most current version. It is strongly recommended to leave this on.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Version Updates")
+	bool bUpdateAssetsOnStartup;
+
+	/**
+	 * Display a progress bar when updating assets to a new version.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Version Updates", meta = (EditCondition = "bUpdateAssetsOnStartup"))
+	bool bDisplayAssetUpdateProgress;
+
+	/**
+	 * Display a popup with a link to the patch notes when a new version is detected.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Version Updates")
+	bool bDisplayUpdateNotification;
+	
 	/**
 	 * Perform additional validation when compiling the state machine default object by attempting a low level instantiation.
 	 */
@@ -32,4 +53,8 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Conduits")
 	bool bConfigureNewConduitsAsTransitions;
+
+	// UObject
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	// ~UObject
 };

@@ -4,8 +4,8 @@
 #include "Kismet2/KismetEditorUtilities.h"
 #include "Engine/Engine.h"
 #include "UObject/UObjectThreadContext.h"
-#include "SMBlueprintEditorUtils.h"
-#include "SMBlueprint.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
+#include "Blueprints/SMBlueprint.h"
 #include "SMUtils.h"
 #include "Graph/SMGraph.h"
 #include "Graph/Schema/SMGraphSchema.h"
@@ -14,7 +14,7 @@
 #include "Customization/SMEditorCustomization.h"
 #include "SMBlueprintEditor.h"
 #include "SMGraphNode_StateNode.h"
-#include "SMNodeInstanceUtils.h"
+#include "Utilities/SMNodeInstanceUtils.h"
 
 #define LOCTEXT_NAMESPACE "SMGraphNodeBase"
 
@@ -48,13 +48,10 @@ USMGraphNode_Base::USMGraphNode_Base(const FObjectInitializer& ObjectInitializer
 	CachedBrush = FSlateNoResource();
 	bJustPasted = false;
 	bGenerateTemplateOnNodePlacement = true;
-}
-
-void USMGraphNode_Base::PostLoad()
-{
-	Super::PostLoad();
-	
-	ConvertToCurrentVersion();
+	bIsPrecompiling = false;
+	bRequiresGuidRegeneration = false;
+	bNeedsStateStackConversion = false;
+	bTEST_ForceNoTemplateGuid = false;
 }
 
 void USMGraphNode_Base::DestroyNode()
@@ -199,38 +196,82 @@ void USMGraphNode_Base::ValidateNodeDuringCompilation(FCompilerResultsLog& Messa
 
 void USMGraphNode_Base::CreateGraphPropertyGraphs(bool bGenerateNewGuids)
 {
+	bGenerateNewGuids = bGenerateNewGuids || bRequiresGuidRegeneration;
+	
 	TSet<FGuid> LiveGuids;
+	bool bHasChanged = CreateGraphPropertyGraphsForTemplate(NodeInstanceTemplate, bGenerateNewGuids, LiveGuids);
 
+	if (USMGraphNode_StateNode* StateNode = Cast<USMGraphNode_StateNode>(this))
+	{
+		// State nodes may have extra property graphs with the state stack.
+		for (const FStateStackContainer& StackTemplate : StateNode->GetAllNodeStackTemplates())
+		{
+			if (CreateGraphPropertyGraphsForTemplate(StackTemplate.NodeStackInstanceTemplate, bGenerateNewGuids, LiveGuids) && !bHasChanged)
+			{
+				bHasChanged = true;
+			}
+		}
+	}
+	
+	// Remove graphs no longer used.
+	TArray<FGuid> CurrentKeys;
+	GraphPropertyGraphs.GetKeys(CurrentKeys);
+
+	for(const FGuid& Guid : CurrentKeys)
+	{
+		if(!LiveGuids.Contains(Guid))
+		{
+			UEdGraph* GraphToRemove = GraphPropertyGraphs[Guid];
+			RemovePropertyGraph(Cast<USMPropertyGraph>(GraphToRemove), false);
+			GraphPropertyTemplates.Remove(Guid);
+			GraphPropertyGraphs.Remove(Guid);
+			GraphPropertyNodes.Remove(Guid);
+			bHasChanged = true;
+		}
+	}
+
+	if(bHasChanged)
+	{
+		ReconstructNode();
+	}
+
+	bRequiresGuidRegeneration = false;
+	bNeedsStateStackConversion = false;
+}
+
+bool USMGraphNode_Base::CreateGraphPropertyGraphsForTemplate(USMNodeInstance* Template, bool bGenerateNewGuids, TSet<FGuid>& LiveGuidsInOut, bool bResetNonVariableGuids)
+{
 	bool bHasChanged = false;
-	if(NodeInstanceTemplate && SupportsPropertyGraphs())
+	
+	if (Template && SupportsPropertyGraphs())
 	{
 		Modify();
-		if(BoundGraph)
+		if (BoundGraph)
 		{
 			BoundGraph->Modify();
 		}
 
-		UClass* TemplateClass = NodeInstanceTemplate->GetClass();
+		UClass* TemplateClass = Template->GetClass();
 		for (TFieldIterator<FProperty> It(TemplateClass); It; ++It)
 		{
 			FProperty* Property = *It;
 			bool bIsActualGraphProperty = false;
-			
+
 			FName VarName = Property->GetFName();
 			if (VarName == GET_MEMBER_NAME_CHECKED(USMNodeInstance, ExposedPropertyOverrides))
 			{
 				continue;
 			}
-			
+
 			// So custom graph details can be displayed.
 			if (FStructProperty* StructProperty = FSMNodeInstanceUtils::IsPropertyGraphProperty(Property))
 			{
 				bIsActualGraphProperty = true;
 				FSMGraphPropertyCustomization::RegisterNewStruct(StructProperty->Struct->GetFName());
 			}
-			
+
 			// Only properties that are instance editable.
-			if(!bIsActualGraphProperty && !FSMNodeInstanceUtils::IsPropertyExposedToGraphNode(Property))
+			if (!bIsActualGraphProperty && !FSMNodeInstanceUtils::IsPropertyExposedToGraphNode(Property))
 			{
 				continue;
 			}
@@ -238,41 +279,47 @@ void USMGraphNode_Base::CreateGraphPropertyGraphs(bool bGenerateNewGuids)
 			FProperty* TargetProperty = Property;
 			int32 ArraySize = 1;
 			FArrayProperty* ArrayProperty = CastField<FArrayProperty>(Property);
-			if(ArrayProperty)
+			if (ArrayProperty)
 			{
 				TargetProperty = ArrayProperty->Inner;
-				
-				FScriptArrayHelper Helper(ArrayProperty, ArrayProperty->ContainerPtrToValuePtr<uint8>(NodeInstanceTemplate));
+
+				FScriptArrayHelper Helper(ArrayProperty, ArrayProperty->ContainerPtrToValuePtr<uint8>(Template));
 				ArraySize = Helper.Num();
 
 				// No array initialized yet.
-				if(ArraySize == 0)
+				if (ArraySize == 0)
 				{
 					continue;
 				}
 			}
-			
+
 			// Storage for properties initialized only within this scope.
 			TArray<FSMGraphProperty> TempGraphProperties;
 			TempGraphProperties.Reserve(ArraySize);
 
 			// Contains temp properties or pointers to stored properties.
 			TArray<FSMGraphProperty_Base*> GraphProperties;
-			if(bIsActualGraphProperty)
+			if (bIsActualGraphProperty)
 			{
 				// This property itself is a graph property.
-				USMUtils::BlueprintPropertyToNativeProperty(Property, NodeInstanceTemplate, GraphProperties);
+				USMUtils::BlueprintPropertyToNativeProperty(Property, Template, GraphProperties);
 
 				// Set the variable information. This may still be used for lookup later.
-				for(int32 Idx = 0; Idx < GraphProperties.Num(); ++Idx)
+				for (int32 Idx = 0; Idx < GraphProperties.Num(); ++Idx)
 				{
-					FSMNodeInstanceUtils::SetGraphPropertyFromProperty(*GraphProperties[Idx], TargetProperty, Idx, false);
+					FSMNodeInstanceUtils::SetGraphPropertyFromProperty(*GraphProperties[Idx], TargetProperty, Template, Idx, false);
+
+					if (bResetNonVariableGuids)
+					{
+						// Template guid will have been set from above.
+						GraphProperties[Idx]->SetTemplateGuid(Template->GetTemplateGuid(), true);
+					}
 				}
 			}
 			else
 			{
 				// Look for an override.
-				FSMGraphProperty* MatchedGraphProperty = NodeInstanceTemplate->ExposedPropertyOverrides.FindByPredicate([&](const FSMGraphProperty_Base& GraphProperty)
+				FSMGraphProperty* MatchedGraphProperty = Template->ExposedPropertyOverrides.FindByPredicate([&](const FSMGraphProperty_Base& GraphProperty)
 				{
 					return GraphProperty.VariableName == VarName;
 				});
@@ -280,15 +327,15 @@ void USMGraphNode_Base::CreateGraphPropertyGraphs(bool bGenerateNewGuids)
 				for (int32 Idx = 0; Idx < ArraySize; ++Idx)
 				{
 					// Check if the array has been modified. This requires special handling for adding or removing elements.
-					if (NodeInstanceTemplate->WasArrayPropertyModified(Property->GetFName()) && NodeInstanceTemplate->ArrayIndexChanged == Idx)
+					if (Template->WasArrayPropertyModified(Property->GetFName()) && Template->ArrayIndexChanged == Idx)
 					{
-						if (NodeInstanceTemplate->ArrayChangeType == EPropertyChangeType::ArrayRemove)
+						if (Template->ArrayChangeType == EPropertyChangeType::ArrayRemove)
 						{
-							HandlePropertyGraphArrayRemoval(GraphProperties, TempGraphProperties, TargetProperty, Idx, ArraySize, MatchedGraphProperty);
+							HandlePropertyGraphArrayRemoval(GraphProperties, TempGraphProperties, TargetProperty, Idx, ArraySize, MatchedGraphProperty, Template);
 						}
-						else if (NodeInstanceTemplate->ArrayChangeType == EPropertyChangeType::ArrayAdd)
+						else if (Template->ArrayChangeType == EPropertyChangeType::ArrayAdd)
 						{
-							HandlePropertyGraphArrayInsertion(GraphProperties, TempGraphProperties, TargetProperty, Idx, ArraySize, MatchedGraphProperty);
+							HandlePropertyGraphArrayInsertion(GraphProperties, TempGraphProperties, TargetProperty, Idx, ArraySize, MatchedGraphProperty, Template);
 						}
 
 						// Always trigger an update if the array was modified.
@@ -306,14 +353,29 @@ void USMGraphNode_Base::CreateGraphPropertyGraphs(bool bGenerateNewGuids)
 							TempProperty = *MatchedGraphProperty;
 						}
 
-						FSMNodeInstanceUtils::SetGraphPropertyFromProperty(TempProperty, TargetProperty, Idx);
-
+						FSMNodeInstanceUtils::SetGraphPropertyFromProperty(TempProperty, TargetProperty, Template, Idx, true, !bNeedsStateStackConversion);
+						if (bNeedsStateStackConversion && bGenerateNewGuids && !bTEST_ForceNoTemplateGuid)
+						{
+							/*
+							 * Special conversion for anyone who was on the dev branch when the pre 2.4 import change went live.
+							 */
+							if (!GraphPropertyGraphs.FindRef(TempProperty.GetGuid()))
+							{
+								FSMGraphProperty UpToDateTempProperty;
+								FSMNodeInstanceUtils::SetGraphPropertyFromProperty(UpToDateTempProperty, TargetProperty, Template, Idx, true, true);
+								if (GraphPropertyGraphs.FindRef(UpToDateTempProperty.GetGuid()))
+								{
+									TempProperty = UpToDateTempProperty;
+								}
+							}
+						}
+						
 						TempGraphProperties.Add(TempProperty);
 						GraphProperties.Add(&TempGraphProperties.Last());
 					}
 				}
 			}
-			
+
 			for (int32 i = 0; i < GraphProperties.Num(); ++i)
 			{
 				FSMGraphProperty_Base* GraphProperty = GraphProperties[i];
@@ -321,32 +383,40 @@ void USMGraphNode_Base::CreateGraphPropertyGraphs(bool bGenerateNewGuids)
 				GraphProperty->RealDisplayName = Property->GetDisplayNameText();
 				GraphProperty->ArrayIndex = i;
 
+				GraphProperty->SetTemplateGuid(Template->GetTemplateGuid());
 				FGuid Guid = GraphProperty->GenerateNewGuidIfNotValid();
 
-				if(bGenerateNewGuids)
+				// Make sure reference is up to date.. if this was a copy paste operation it won't be.
+				if (USMGraphK2Node_PropertyNode_Base* ExistingGraphPropertyNode = GraphPropertyNodes.FindRef(Guid))
 				{
-					// Make sure reference is up to date.. if this was a copy paste operation it won't be.
-					if (USMGraphK2Node_PropertyNode_Base* ExistingGraphPropertyNode = GraphPropertyNodes.FindRef(Guid))
-					{
-						ExistingGraphPropertyNode->SyncWithContainer();
-					}
+					ExistingGraphPropertyNode->SyncWithContainer();
 				}
-				
+
 				UEdGraph* OldGraph = GraphPropertyGraphs.FindRef(Guid);
 				if (bGenerateNewGuids && OldGraph)
 				{
 					// Remove these so they don't get deleted later, we just want to reassign the guid.
 					GraphPropertyGraphs.Remove(Guid);
 					GraphPropertyNodes.Remove(Guid);
-
+					GraphPropertyTemplates.Remove(Guid);
+					
 					// Create a new guid if requested.
-					if(!GraphProperty->ShouldGenerateGuidFromVariable())
+					if (!GraphProperty->ShouldGenerateGuidFromVariable())
 					{
 						Guid = GraphProperty->GenerateNewGuid();
 					}
+					else if (bNeedsStateStackConversion)
+					{
+						if (!bTEST_ForceNoTemplateGuid)
+						{
+							// This will apply the template guid.
+							FSMNodeInstanceUtils::SetGraphPropertyFromProperty(*GraphProperty, TargetProperty, Template, i, true);
+						}
+						Guid = GraphProperty->GetGuid();
+					}
 				}
 
-				LiveGuids.Add(Guid);
+				LiveGuidsInOut.Add(Guid);
 
 				// Refresh the runtime node property in case it has changed.
 				if (USMGraphK2Node_PropertyNode_Base* ExistingGraphPropertyNode = GraphPropertyNodes.FindRef(Guid))
@@ -369,7 +439,7 @@ void USMGraphNode_Base::CreateGraphPropertyGraphs(bool bGenerateNewGuids)
 				{
 					// Load the package for this module. This is needed to find the correct class to load.
 					UPackage* Package = GraphProperty->GetEditorModule();
-					if(!Package)
+					if (!Package)
 					{
 						FSMGraphNodeLog NodeLog(EMessageSeverity::Error);
 						NodeLog.ConsoleMessage = TEXT("Could not find editor module for node @@.");
@@ -379,7 +449,7 @@ void USMGraphNode_Base::CreateGraphPropertyGraphs(bool bGenerateNewGuids)
 						continue;
 					}
 					UClass* GraphClass = GraphProperty->GetGraphClass(Package);
-					if(!GraphClass)
+					if (!GraphClass)
 					{
 						FSMGraphNodeLog NodeLog(EMessageSeverity::Error);
 						NodeLog.ConsoleMessage = TEXT("Could not find graph class for node @@.");
@@ -409,7 +479,7 @@ void USMGraphNode_Base::CreateGraphPropertyGraphs(bool bGenerateNewGuids)
 					FEdGraphUtilities::RenameGraphToNameOrCloseToName(PropertyGraph, *GraphProperty->GetDisplayName().ToString());
 
 					CastChecked<USMPropertyGraph>(PropertyGraph)->TempGraphProperty = GraphProperty;
-					
+
 					// Initialize the property graph
 					const UEdGraphSchema* Schema = PropertyGraph->GetSchema();
 					Schema->CreateDefaultNodesForGraph(*PropertyGraph);
@@ -417,40 +487,24 @@ void USMGraphNode_Base::CreateGraphPropertyGraphs(bool bGenerateNewGuids)
 
 				BoundGraph->SubGraphs.AddUnique(PropertyGraph);
 
+				// Record the template used.
+				GraphPropertyTemplates.Add(Guid, Template);
+				
 				// Look for placed property nodes and link them.
 				InitPropertyGraphNodes(PropertyGraph, GraphProperty);
 
-				// Clear out temp property as it wont be valid after this scope.
+				// Clear out temp property as it won't be valid after this scope.
 				CastChecked<USMPropertyGraph>(PropertyGraph)->TempGraphProperty = nullptr;
-				
+
 				GraphPropertyGraphs.Add(Guid, PropertyGraph);
 				bHasChanged = true;
 			}
 		}
 
-		NodeInstanceTemplate->ResetArrayCheck();
+		Template->ResetArrayCheck();
 	}
 
-	// Remove graphs no longer used.
-	TArray<FGuid> CurrentKeys;
-	GraphPropertyGraphs.GetKeys(CurrentKeys);
-
-	for(const FGuid& Guid : CurrentKeys)
-	{
-		if(!LiveGuids.Contains(Guid))
-		{
-			UEdGraph* GraphToRemove = GraphPropertyGraphs[Guid];
-			RemovePropertyGraph(Cast<USMPropertyGraph>(GraphToRemove), false);
-			GraphPropertyGraphs.Remove(Guid);
-			GraphPropertyNodes.Remove(Guid);
-			bHasChanged = true;
-		}
-	}
-
-	if(bHasChanged)
-	{
-		ReconstructNode();
-	}
+	return bHasChanged;
 }
 
 UEdGraph* USMGraphNode_Base::GetGraphPropertyGraph(const FGuid& Guid) const
@@ -463,12 +517,21 @@ USMGraphK2Node_PropertyNode_Base* USMGraphNode_Base::GetGraphPropertyNode(const 
 	return GraphPropertyNodes.FindRef(Guid);
 }
 
-USMGraphK2Node_PropertyNode_Base* USMGraphNode_Base::GetGraphPropertyNode(const FName& VariableName) const
+USMGraphK2Node_PropertyNode_Base* USMGraphNode_Base::GetGraphPropertyNode(const FName& VariableName, USMNodeInstance* TemplateMatch) const
 {
 	for (const auto& KeyVal : GraphPropertyNodes)
 	{
-		if (KeyVal.Value && KeyVal.Value->GetPropertyNodeChecked()->VariableName == VariableName)
+		if (!KeyVal.Value)
 		{
+			continue;
+		}
+		FSMGraphProperty_Base* GraphProperty = KeyVal.Value->GetPropertyNodeChecked();
+		if (GraphProperty->VariableName == VariableName)
+		{
+			if (TemplateMatch && TemplateMatch->GetTemplateGuid() != GraphProperty->GetTemplateGuid())
+			{
+				continue;
+			}
 			return KeyVal.Value;
 		}
 	}
@@ -595,8 +658,11 @@ void USMGraphNode_Base::PreCompile(FSMKismetCompilerContext& CompilerContext)
 		return;
 	}
 
+	bIsPrecompiling = true;
+	
+	/** Call in case the version manager hasn't run. */
 	ConvertToCurrentVersion();
-
+	
 	ResetLogMessages();
 
 	TMap<FGuid, UEdGraph*> PropertyGraphs = GetAllPropertyGraphs();
@@ -607,12 +673,15 @@ void USMGraphNode_Base::PreCompile(FSMKismetCompilerContext& CompilerContext)
 		{
 			GraphPropertyGraphs.Remove(KeyVal.Key);
 			GraphPropertyNodes.Remove(KeyVal.Key);
-
+			GraphPropertyTemplates.Remove(KeyVal.Key);
+			
 			CompilerContext.MessageLog.Error(TEXT("Property graph missing on load on node @@."), this);
 		}
 	}
 	
 	ForceRecreateProperties();
+
+	bIsPrecompiling = false;
 }
 
 void USMGraphNode_Base::OnCompile(FSMKismetCompilerContext& CompilerContext)
@@ -628,8 +697,22 @@ void USMGraphNode_Base::OnCompile(FSMKismetCompilerContext& CompilerContext)
 	if(NodeInstanceTemplate && !IsUsingDefaultNodeClass())
 	{
 		// We don't need the default template at runtime.
-		CompilerContext.DefaultObjectTemplates.Add(RuntimeNode->GetNodeGuid(), NodeInstanceTemplate);
+		CompilerContext.AddDefaultObjectTemplate(RuntimeNode->GetNodeGuid(), NodeInstanceTemplate, FTemplateContainer::NodeTemplate);
 	}
+}
+
+void USMGraphNode_Base::ResetDebugState()
+{
+	// Prevents a previous cycle from showing it as running.
+	if (const FSMNode_Base* DebugNode = GetDebugNode())
+	{
+		const_cast<FSMNode_Base*>(DebugNode)->bWasActive = bWasDebugActive = false;
+	}
+}
+
+void USMGraphNode_Base::OnWidgetConstruct()
+{
+	ResetDebugState();
 }
 
 void USMGraphNode_Base::UpdateTime(float DeltaTime)
@@ -666,6 +749,10 @@ void USMGraphNode_Base::UpdateTime(float DeltaTime)
 		{
 			DebugTotalTime += DeltaTime;
 		}
+	}
+	else
+	{
+		bIsDebugActive = bWasDebugActive = false;
 	}
 }
 
@@ -730,9 +817,12 @@ void USMGraphNode_Base::InitTemplate()
 	}
 
 	Modify();
+
+	FString NodeName = GetName();
+	NodeName = FSMBlueprintEditorUtils::GetSafeName(NodeName);
 	
-	const FString TemplateName = FString::Printf(TEXT("NODE_TEMPLATE_%s_%s_%s"), *GetName(), *NodeClass->GetName(), *FGuid::NewGuid().ToString());
-	USMNodeInstance* NewTemplate = NodeClass ? NewObject<USMNodeInstance>(this, NodeClass, *TemplateName, RF_ArchetypeObject | RF_Transactional | RF_Public) : nullptr;
+	const FString TemplateName = FString::Printf(TEXT("NODE_TEMPLATE_%s_%s_%s"), *NodeName, *NodeClass->GetName(), *FGuid::NewGuid().ToString());
+	USMNodeInstance* NewTemplate = NewObject<USMNodeInstance>(this, NodeClass, *TemplateName, RF_ArchetypeObject | RF_Transactional | RF_Public);
 
 	if (NodeInstanceTemplate)
 	{
@@ -801,6 +891,7 @@ void USMGraphNode_Base::DestroyAllPropertyGraphs()
 
 	GraphPropertyNodes.Empty();
 	GraphPropertyGraphs.Empty();
+	GraphPropertyTemplates.Empty();
 }
 
 void USMGraphNode_Base::PlaceDefaultInstanceNodes()
@@ -826,6 +917,11 @@ UClass* USMGraphNode_Base::GetDefaultNodeClass() const
 	}
 
 	return nullptr;
+}
+
+USMNodeInstance* USMGraphNode_Base::GetNodeTemplateFromGuid(const FGuid& Guid) const
+{
+	return GraphPropertyTemplates.FindRef(Guid);
 }
 
 USMGraph* USMGraphNode_Base::GetStateMachineGraph() const
@@ -932,13 +1028,8 @@ const FSlateBrush* USMGraphNode_Base::GetNodeIcon()
 	return nullptr;
 }
 
-void USMGraphNode_Base::ConvertToCurrentVersion(bool bOnlyOnLoad, bool bResetVersion)
-{
-	if (bResetVersion)
-	{
-		LoadedVersion = 0;
-	}
-	
+bool USMGraphNode_Base::ConvertToCurrentVersion(bool bOnlyOnLoad)
+{	
 	if ((!IsTemplate() && GetLinker() && GetLinker()->IsPersistent() && GetLinker()->IsLoading()) || !bOnlyOnLoad)
 	{
 		if (GetDefaultNodeClass())
@@ -953,15 +1044,37 @@ void USMGraphNode_Base::ConvertToCurrentVersion(bool bOnlyOnLoad, bool bResetVer
 				// Pre 2.3 nodes need to have their properties imported to the node instance template.
 				ImportDeprecatedProperties();
 			}
+			if (LoadedVersion < STATESTACK_VERSION)
+			{
+				// Pre 2.4 nodes need their graph property guids updated to account for different node templates.
+				
+				bRequiresGuidRegeneration = true;
+				bNeedsStateStackConversion = true;
+
+				if (!bIsPrecompiling)
+				{
+					// If pre-compile isn't what called the upgrade method we need to force recreate the properties
+					// as a precaution because the booleans aren't saved and this is a one time upgrade. Testing
+					// show that this branch shouldn't be called.
+					ForceRecreateProperties();
+					bRequiresGuidRegeneration = false;
+					bNeedsStateStackConversion = false;
+				}
+			}
 		}
 
-		SetToCurrentVersion();
+		return SetToCurrentVersion();
 	}
+
+	return false;
 }
 
-void USMGraphNode_Base::SetToCurrentVersion()
+bool USMGraphNode_Base::SetToCurrentVersion()
 {
+	const int32 LastVersion = LoadedVersion;
 	LoadedVersion = CURRENT_VERSION;
+
+	return LastVersion != LoadedVersion;
 }
 
 void USMGraphNode_Base::ForceSetVersion(int32 NewVersion)
@@ -974,14 +1087,19 @@ FLinearColor USMGraphNode_Base::Internal_GetBackgroundColor() const
 	return FLinearColor::Black;
 }
 
-const FLinearColor* USMGraphNode_Base::GetCustomBackgroundColor() const
+const FLinearColor* USMGraphNode_Base::GetCustomBackgroundColor(USMNodeInstance* NodeInstance) const
 {
-	if(!NodeInstanceTemplate || !NodeInstanceTemplate->HasCustomColor())
+	if (!NodeInstance)
+	{
+		NodeInstance = NodeInstanceTemplate;
+	}
+	
+	if(!NodeInstance || !NodeInstance->HasCustomColor())
 	{
 		return nullptr;
 	}
 
-	return &NodeInstanceTemplate->GetNodeColor();
+	return &NodeInstance->GetNodeColor();
 }
 
 void USMGraphNode_Base::RemovePropertyGraph(USMPropertyGraph* PropertyGraph, bool RemoveFromMaps)
@@ -999,6 +1117,7 @@ void USMGraphNode_Base::RemovePropertyGraph(USMPropertyGraph* PropertyGraph, boo
 		const FGuid& Guid = PropertyGraph->ResultNode->GetPropertyNode()->GetGuid();
 		GraphPropertyGraphs.Remove(Guid);
 		GraphPropertyNodes.Remove(Guid);
+		GraphPropertyTemplates.Remove(Guid);
 	}
 	
 	if (FSMBlueprintEditor* Editor = FSMBlueprintEditorUtils::GetStateMachineEditor(this))
@@ -1024,7 +1143,7 @@ void USMGraphNode_Base::RemovePropertyGraph(USMPropertyGraph* PropertyGraph, boo
 }
 
 void USMGraphNode_Base::HandlePropertyGraphArrayRemoval(TArray<FSMGraphProperty_Base*>& GraphProperties,
-	TArray<FSMGraphProperty>& TempGraphProperties, FProperty* TargetProperty, int32 RemovalIndex, int32 ArraySize, FSMGraphProperty* OverrideGraphProperty)
+	TArray<FSMGraphProperty>& TempGraphProperties, FProperty* TargetProperty, int32 RemovalIndex, int32 ArraySize, FSMGraphProperty* OverrideGraphProperty, USMNodeInstance* Template)
 {
 	FSMGraphProperty TempProperty;
 
@@ -1035,7 +1154,7 @@ void USMGraphNode_Base::HandlePropertyGraphArrayRemoval(TArray<FSMGraphProperty_
 	}
 
 	// The property index being removed.
-	FSMNodeInstanceUtils::SetGraphPropertyFromProperty(TempProperty, TargetProperty, RemovalIndex);
+	FSMNodeInstanceUtils::SetGraphPropertyFromProperty(TempProperty, TargetProperty, Template, RemovalIndex);
 	UEdGraph* PropertyGraphToRemove = GraphPropertyGraphs.FindRef(TempProperty.GetGuid());
 	
 	// Remove the graph for the deleted index.
@@ -1058,7 +1177,7 @@ void USMGraphNode_Base::HandlePropertyGraphArrayRemoval(TArray<FSMGraphProperty_
 			NextGraphProperty = *OverrideGraphProperty;
 		}
 
-		FSMNodeInstanceUtils::SetGraphPropertyFromProperty(NextGraphProperty, TargetProperty, NextIdx);
+		FSMNodeInstanceUtils::SetGraphPropertyFromProperty(NextGraphProperty, TargetProperty, Template, NextIdx);
 		const FGuid OldGuid = NextGraphProperty.GetGuid();
 
 		UEdGraph* NextGraph = GraphPropertyGraphs.FindRef(OldGuid);
@@ -1067,15 +1186,18 @@ void USMGraphNode_Base::HandlePropertyGraphArrayRemoval(TArray<FSMGraphProperty_
 		// Remove the old guids.
 		GraphPropertyGraphs.Remove(OldGuid);
 		GraphPropertyNodes.Remove(OldGuid);
+		USMNodeInstance* OldTemplate;
+		GraphPropertyTemplates.RemoveAndCopyValue(OldGuid, OldTemplate);
 
 		// Update the new guids.
-		FSMNodeInstanceUtils::SetGraphPropertyFromProperty(NextGraphProperty, TargetProperty, NextIdx - 1);
+		FSMNodeInstanceUtils::SetGraphPropertyFromProperty(NextGraphProperty, TargetProperty, OldTemplate, NextIdx - 1);
 		if (NextGraph && NextNode)
 		{
 			const FGuid& NewGuid = NextGraphProperty.GetGuid();
 			
 			GraphPropertyGraphs.Add(NewGuid, NextGraph);
 			GraphPropertyNodes.Add(NewGuid, NextNode);
+			GraphPropertyTemplates.Add(NewGuid, Template);
 		}
 
 		TempGraphProperties.Add(NextGraphProperty);
@@ -1085,7 +1207,7 @@ void USMGraphNode_Base::HandlePropertyGraphArrayRemoval(TArray<FSMGraphProperty_
 
 void USMGraphNode_Base::HandlePropertyGraphArrayInsertion(TArray<FSMGraphProperty_Base*>& GraphProperties,
 	TArray<FSMGraphProperty>& TempGraphProperties, FProperty* TargetProperty, int32 InsertionIndex, int32 ArraySize,
-	FSMGraphProperty* OverrideGraphProperty)
+	FSMGraphProperty* OverrideGraphProperty, USMNodeInstance* Template)
 {
 	// Reassign this guid and all guids that follow next in the array to their current index + 1.
 	// Go backwards since the previous index would overwrite the next index.
@@ -1099,7 +1221,7 @@ void USMGraphNode_Base::HandlePropertyGraphArrayInsertion(TArray<FSMGraphPropert
 			NextGraphProperty = *OverrideGraphProperty;
 		}
 
-		FSMNodeInstanceUtils::SetGraphPropertyFromProperty(NextGraphProperty, TargetProperty, NextIdx);
+		FSMNodeInstanceUtils::SetGraphPropertyFromProperty(NextGraphProperty, TargetProperty, Template, NextIdx);
 		const FGuid OldGuid = NextGraphProperty.GetGuid();
 
 		UEdGraph* NextGraph = GraphPropertyGraphs.FindRef(OldGuid);
@@ -1108,15 +1230,18 @@ void USMGraphNode_Base::HandlePropertyGraphArrayInsertion(TArray<FSMGraphPropert
 		// Remove the old guids.
 		GraphPropertyGraphs.Remove(OldGuid);
 		GraphPropertyNodes.Remove(OldGuid);
+		USMNodeInstance* OldTemplate;
+		GraphPropertyTemplates.RemoveAndCopyValue(OldGuid, OldTemplate);
 
 		// Update the new guids.
-		FSMNodeInstanceUtils::SetGraphPropertyFromProperty(NextGraphProperty, TargetProperty, NextIdx + 1);
+		FSMNodeInstanceUtils::SetGraphPropertyFromProperty(NextGraphProperty, TargetProperty, OldTemplate, NextIdx + 1);
 		if (NextGraph && NextNode)
 		{
 			const FGuid& NewGuid = NextGraphProperty.GetGuid();
 
 			GraphPropertyGraphs.Add(NewGuid, NextGraph);
 			GraphPropertyNodes.Add(NewGuid, NextNode);
+			GraphPropertyTemplates.Add(NewGuid, OldTemplate);
 		}
 	}
 
@@ -1131,7 +1256,7 @@ void USMGraphNode_Base::HandlePropertyGraphArrayInsertion(TArray<FSMGraphPropert
 			NextGraphProperty = *OverrideGraphProperty;
 		}
 		
-		FSMNodeInstanceUtils::SetGraphPropertyFromProperty(NextGraphProperty, TargetProperty, Idx);
+		FSMNodeInstanceUtils::SetGraphPropertyFromProperty(NextGraphProperty, TargetProperty, Template, Idx);
 		TempGraphProperties.Add(NextGraphProperty);
 		GraphProperties.Add(&TempGraphProperties.Last());
 	}

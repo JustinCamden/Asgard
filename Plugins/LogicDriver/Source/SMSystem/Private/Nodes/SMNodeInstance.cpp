@@ -5,8 +5,13 @@
 #include "CoreMinimal.h"
 #include "SMInstance.h"
 
+
+DEFINE_STAT(STAT_NodeInstances);
+
 USMNodeInstance::USMNodeInstance() : Super(), bAutoEvalExposedProperties(true), OwningNode(nullptr)
 {
+	INC_DWORD_STAT(STAT_NodeInstances)
+	
 	NodeIconTintColor = FLinearColor(1.f, 1.f, 1.f, 1.f);
 	
 #if WITH_EDITORONLY_DATA
@@ -28,6 +33,12 @@ UWorld* USMNodeInstance::GetWorld() const
 	}
 
 	return nullptr;
+}
+
+void USMNodeInstance::BeginDestroy()
+{
+	Super::BeginDestroy();
+	DEC_DWORD_STAT(STAT_NodeInstances)
 }
 
 UObject* USMNodeInstance::GetContext() const

@@ -129,6 +129,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent", meta = (ClampMin = "0.0", ClampMax = "179.9", UIMin = "0.0", UIMax = "180.0"))
 		float LeverLimitNegative;
 
+	// If true then this lever is locked in place until unlocked again
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
+		bool bIsLocked;
+
+	// If true then this lever will auto drop even when locked
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
+		bool bAutoDropWhenLocked;
+
+	// Sets if the lever is locked or not
+	UFUNCTION(BlueprintCallable, Category = "GripSettings")
+		void SetIsLocked(bool bNewLockedState);
+
+	// Checks and applies auto drop if we need too
+	bool CheckAutoDrop(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation);
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
 		EVRInteractibleLeverReturnType LeverReturnTypeWhenReleased;
 
@@ -166,8 +181,12 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "VRLeverComponent")
 		bool bIsLerping;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
 		int GripPriority;
+
+	// Sets the grip priority
+	UFUNCTION(BlueprintCallable, Category = "GripSettings")
+		void SetGripPriority(int NewGripPriority);
 
 	// Full precision current angle
 	float FullCurrentAngle;
@@ -345,7 +364,7 @@ public:
 
 	// Get grip primary slot in range
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void ClosestGripSlotInRange(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
+		void ClosestGripSlotInRange(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName,  UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
 
 	// Check if an object allows multiple grips at one time
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")

@@ -13,9 +13,9 @@ class USMIntermediateGraphSchema : public USMGraphK2Schema
 	GENERATED_UCLASS_BODY()
 
 	//~ Begin UEdGraphSchema Interface.
-	void CreateDefaultNodesForGraph(UEdGraph& Graph) const override;
-	void GetGraphDisplayInformation(const UEdGraph& Graph, /*out*/ FGraphDisplayInfo& DisplayInfo) const override;
-	void HandleGraphBeingDeleted(UEdGraph& GraphBeingRemoved) const override;
+	virtual void CreateDefaultNodesForGraph(UEdGraph& Graph) const override;
+	virtual void GetGraphDisplayInformation(const UEdGraph& Graph, /*out*/ FGraphDisplayInfo& DisplayInfo) const override;
+	virtual void HandleGraphBeingDeleted(UEdGraph& GraphBeingRemoved) const override;
 	//~ End UEdGraphSchema Interface.
 };
 

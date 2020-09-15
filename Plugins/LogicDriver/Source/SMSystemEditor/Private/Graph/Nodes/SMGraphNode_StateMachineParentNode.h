@@ -15,16 +15,16 @@ class SMSYSTEMEDITOR_API USMGraphNode_StateMachineParentNode : public USMGraphNo
 	TSubclassOf<class USMInstance> ParentClass;
 
 	//~ Begin UEdGraphNode Interface
-	void PostPlacedNewNode() override;
-	UObject* GetJumpTargetForDoubleClick() const override;
-	void JumpToDefinition() const override;
+	virtual void PostPlacedNewNode() override;
+	virtual UObject* GetJumpTargetForDoubleClick() const override;
+	virtual void JumpToDefinition() const override;
 	//~ End UEdGraphNode Interface
 
 	// USMGraphNode_StateMachineStateNode
-	void CreateBoundGraph() override;
-	void UpdateEditState() override;
-	bool ReferenceStateMachine(USMBlueprint* OtherStateMachine, bool bRestrictCircularReference) override { return false; }
-	void InitStateMachineReferenceTemplate(bool bInitialLoad) override {}
+	virtual void CreateBoundGraph() override;
+	virtual void UpdateEditState() override;
+	virtual bool ReferenceStateMachine(USMBlueprint* OtherStateMachine, bool bRestrictCircularReference) override { return false; }
+	virtual void InitStateMachineReferenceTemplate(bool bInitialLoad) override {}
 	// ~USMGraphNode_StateMachineStateNode
 
 	void SetParentIfNull();
@@ -38,6 +38,6 @@ class SMSYSTEMEDITOR_API USMGraphNode_StateMachineParentNode : public USMGraphNo
 	
 protected:
 	// USMGraphNode_StateNodeBase
-	FLinearColor Internal_GetBackgroundColor() const override;
+	virtual FLinearColor Internal_GetBackgroundColor() const override;
 	// ~USMGraphNode_StateNodeBase
 };

@@ -30,10 +30,10 @@ public:
 		);
 	}
 
-	FReply OnDrop(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
+	virtual FReply OnDrop(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
 
 protected:
-	TSharedRef<SWidget>	GetDefaultValueWidget() override
+	virtual TSharedRef<SWidget>	GetDefaultValueWidget() override
 	{
 		return SNew(STextBlock);
 	}

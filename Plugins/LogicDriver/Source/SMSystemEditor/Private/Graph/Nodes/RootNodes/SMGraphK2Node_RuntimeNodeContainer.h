@@ -12,9 +12,9 @@ class USMGraphK2Node_RuntimeNodeContainer : public USMGraphK2Node_RootNode
 {
 	GENERATED_UCLASS_BODY()
 	// UEdGraphNode
-	void PrepareForCopying() override;
-	void PostPasteNode() override;
-	bool HasExternalDependencies(TArray<UStruct*>* OptionalOutput) const override;
+	virtual void PrepareForCopying() override;
+	virtual void PostPasteNode() override;
+	virtual bool HasExternalDependencies(TArray<UStruct*>* OptionalOutput) const override;
 	// ~UedGraphNode
 
 	virtual FSMNode_Base* GetRunTimeNode() { return nullptr; }
@@ -45,11 +45,11 @@ class SMSYSTEMEDITOR_API USMGraphK2Node_RuntimeNodeReference : public USMGraphK2
 	GENERATED_UCLASS_BODY()
 
 	//~ UEdGraphNode
-	void PostPasteNode() override;
+	virtual void PostPasteNode() override;
 	// ~UedGraphNode
 
 	// USMGraphK2Node_Base
-	void PreCompileValidate(FCompilerResultsLog& MessageLog) override;
+	virtual void PreCompileValidate(FCompilerResultsLog& MessageLog) override;
 	// ~USMGraphK2Node_Base
 
 	void SyncWithContainer();
@@ -76,7 +76,7 @@ class SMSYSTEMEDITOR_API USMGraphK2Node_RuntimeNodeReference : public USMGraphK2
 protected:
 	/** Creates a function call and wires a guid struct member get to the function input. */
 	UK2Node_CallFunction* CreateFunctionCallWithGuidInput(UFunction* Function, FSMKismetCompilerContext& CompilerContext,
-		USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty);
+		USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty, FName PinName = "Guid");
 
 	void GetMenuActions_Internal(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const;
 

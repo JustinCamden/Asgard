@@ -417,6 +417,11 @@ void UVRMountComponent::OnGripRelease_Implementation(UGripMotionControllerCompon
 		this->SetComponentTickEnabled(false);
 }
 
+void UVRMountComponent::SetGripPriority(int NewGripPriority)
+{
+	GripPriority = NewGripPriority;
+}
+
 void UVRMountComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
 void UVRMountComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
 void UVRMountComponent::OnSecondaryGrip_Implementation(UGripMotionControllerComponent * GripOwningController, USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
@@ -500,7 +505,7 @@ void UVRMountComponent::ClosestPrimarySlotInRange_Implementation(FVector WorldLo
 bHadSlotInRange = false;
 }*/
 
-void UVRMountComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+void UVRMountComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {
 	bHadSlotInRange = false;
 }

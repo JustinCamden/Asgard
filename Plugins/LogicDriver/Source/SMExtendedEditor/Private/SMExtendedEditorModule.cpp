@@ -3,7 +3,7 @@
 #include "Configuration/SMExtendedEditorStyle.h"
 #include "ISettingsModule.h"
 #include "Configuration/SMExtendedEditorSettings.h"
-#include "SMExtendedEditorUtils.h"
+#include "Utilities/SMExtendedEditorUtils.h"
 #include "Commands/SMExtendedEditorCommands.h"
 #include "SMBlueprintEditor.h"
 

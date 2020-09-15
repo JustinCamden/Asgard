@@ -18,15 +18,15 @@ class SMSYSTEMEDITOR_API USMGraphK2Node_TransitionResultNode : public USMGraphK2
 	FSMTransition TransitionNode;
 
 	//~ Begin UEdGraphNode Interface
-	void AllocateDefaultPins() override;
-	FLinearColor GetNodeTitleColor() const override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
+	virtual void AllocateDefaultPins() override;
+	virtual FLinearColor GetNodeTitleColor() const override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
 
-	bool IsNodePure() const override { return true; }
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual bool IsNodePure() const override { return true; }
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
 	//~ End UEdGraphNode Interface
 
-	FSMNode_Base* GetRunTimeNode() override { return &TransitionNode; }
+	virtual FSMNode_Base* GetRunTimeNode() override { return &TransitionNode; }
 	UEdGraphPin* GetTransitionEvaluationPin() const;
 };

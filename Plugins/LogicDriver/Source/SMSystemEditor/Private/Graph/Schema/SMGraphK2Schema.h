@@ -16,14 +16,14 @@ public:
 	static const FName GN_StateMachineDefinitionGraph;
 
 	// UEdGraphSchema_K2
-	void GetContextMenuActions(class UToolMenu* Menu, class UGraphNodeContextMenuContext* Context) const override;
-	void CreateDefaultNodesForGraph(UEdGraph& Graph) const override;
-	bool CanDuplicateGraph(UEdGraph* InSourceGraph) const override { return false; }
-	void HandleGraphBeingDeleted(UEdGraph& GraphBeingRemoved) const override;
-	const FPinConnectionResponse CanCreateConnection(const UEdGraphPin* PinA, const UEdGraphPin* PinB) const override;
+	virtual void GetContextMenuActions(class UToolMenu* Menu, class UGraphNodeContextMenuContext* Context) const override;
+	virtual void CreateDefaultNodesForGraph(UEdGraph& Graph) const override;
+	virtual bool CanDuplicateGraph(UEdGraph* InSourceGraph) const override { return false; }
+	virtual void HandleGraphBeingDeleted(UEdGraph& GraphBeingRemoved) const override;
+	virtual const FPinConnectionResponse CanCreateConnection(const UEdGraphPin* PinA, const UEdGraphPin* PinB) const override;
 	/** This isn't currently called by UE4. */
-	bool CanEncapuslateNode(UEdGraphNode const& TestNode) const override;
-	void GetGraphDisplayInformation(const UEdGraph& Graph, /*out*/ FGraphDisplayInfo& DisplayInfo) const override;
+	virtual bool CanEncapuslateNode(UEdGraphNode const& TestNode) const override;
+	virtual void GetGraphDisplayInformation(const UEdGraph& Graph, /*out*/ FGraphDisplayInfo& DisplayInfo) const override;
 	// ~UEdGraphSchema_K2
 
 	static UEdGraphPin* GetThenPin(UEdGraphNode* Node);

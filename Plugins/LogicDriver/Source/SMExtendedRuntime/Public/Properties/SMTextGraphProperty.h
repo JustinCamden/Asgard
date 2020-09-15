@@ -43,16 +43,16 @@ public:
 	FText Result;
 	
 	// FSMGraphProperty
-	uint8* GetResult() const override { return (uint8*)&Result; }
-	void SetResult(uint8* Value) override;
-	bool ShouldAutoAssignVariable() const override { return false; }
+	virtual uint8* GetResult() const override { return (uint8*)&Result; }
+	virtual void SetResult(uint8* Value) override;
+	virtual bool ShouldAutoAssignVariable() const override { return false; }
 	// ~FSMGraphProperty
 
 #if WITH_EDITORONLY_DATA
 public:
-	int32 GetVerticalDisplayOrder() const override { return WidgetInfo.DisplayOrder; }
-	bool ShouldDefaultToEditMode() const override { return false; }
-	bool AllowToggleGraphEdit() const override { return true; }
+	virtual int32 GetVerticalDisplayOrder() const override { return WidgetInfo.DisplayOrder; }
+	virtual bool ShouldDefaultToEditMode() const override { return false; }
+	virtual bool AllowToggleGraphEdit() const override { return true; }
 
 #endif
 

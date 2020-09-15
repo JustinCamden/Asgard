@@ -4,7 +4,7 @@
 #include "Framework/Text/IRichTextMarkupWriter.h"
 #include "Kismet2/Kismet2NameValidators.h"
 #include "SMRunTypes.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 
 
 SMTextParser::FParserResults SMTextParser::ConvertToRichText(const FText& InText, UBlueprint* InBlueprint, TMap<FName, FGuid>* ExistingVariables, TMap<FName, FGuid>* ExistingFunctions)

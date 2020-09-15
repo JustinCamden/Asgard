@@ -40,7 +40,7 @@ public:
 	~FSMEditorBlueprintMode();
 
 	// FApplicationMode interface
-	void RegisterTabFactories(TSharedPtr<FTabManager> InTabManager) override;
+	virtual void RegisterTabFactories(TSharedPtr<FTabManager> InTabManager) override;
 	// End of FApplicationMode interface
 private:
 	TWeakPtr<class FSMBlueprintEditor> Editor;

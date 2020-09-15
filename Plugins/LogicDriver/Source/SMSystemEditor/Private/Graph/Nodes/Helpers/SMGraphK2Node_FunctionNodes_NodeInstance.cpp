@@ -3,7 +3,7 @@
 #include "BlueprintNodeSpawner.h"
 #include "BlueprintActionDatabaseRegistrar.h"
 #include "BlueprintDelegateNodeSpawner.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "EdGraph/EdGraph.h"
 #include "K2Node_CallFunction.h"
 #include "K2Node_DynamicCast.h"
@@ -282,6 +282,42 @@ void USMGraphK2Node_StateInstance_StateMachineStop::CustomExpandNode(FSMKismetCo
 	USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty)
 {
 	ExpandAndWireStandardFunction(USMStateInstance_Base::StaticClass()->FindFunctionByName(GET_FUNCTION_NAME_CHECKED(USMStateInstance_Base, OnRootStateMachineStop)),
+		nullptr, CompilerContext, RuntimeNodeContainer, NodeProperty);
+}
+
+
+USMGraphK2Node_StateInstance_OnStateInitialized::USMGraphK2Node_StateInstance_OnStateInitialized(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+}
+
+FText USMGraphK2Node_StateInstance_OnStateInitialized::GetNodeTitle(ENodeTitleType::Type TitleType) const
+{
+	return LOCTEXT("InstanceStateInitialized", "On Instance State Initialized (With Transitions)");
+}
+
+void USMGraphK2Node_StateInstance_OnStateInitialized::CustomExpandNode(FSMKismetCompilerContext& CompilerContext,
+	USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty)
+{
+	ExpandAndWireStandardFunction(USMStateInstance::StaticClass()->FindFunctionByName(GET_FUNCTION_NAME_CHECKED(USMStateInstance, OnStateInitialized)),
+		nullptr, CompilerContext, RuntimeNodeContainer, NodeProperty);
+}
+
+
+USMGraphK2Node_StateInstance_OnStateShutdown::USMGraphK2Node_StateInstance_OnStateShutdown(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+}
+
+FText USMGraphK2Node_StateInstance_OnStateShutdown::GetNodeTitle(ENodeTitleType::Type TitleType) const
+{
+	return LOCTEXT("InstanceStateShutdown", "On Instance State Shutdown (With Transitions)");
+}
+
+void USMGraphK2Node_StateInstance_OnStateShutdown::CustomExpandNode(FSMKismetCompilerContext& CompilerContext,
+	USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty)
+{
+	ExpandAndWireStandardFunction(USMStateInstance::StaticClass()->FindFunctionByName(GET_FUNCTION_NAME_CHECKED(USMStateInstance, OnStateShutdown)),
 		nullptr, CompilerContext, RuntimeNodeContainer, NodeProperty);
 }
 

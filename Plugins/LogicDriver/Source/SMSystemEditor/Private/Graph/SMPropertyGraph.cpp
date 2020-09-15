@@ -1,6 +1,6 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "SMPropertyGraph.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "ScopedTransaction.h"
 
 

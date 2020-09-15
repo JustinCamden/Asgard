@@ -7,7 +7,7 @@
 #include "Framework/Notifications/NotificationManager.h"
 #include "Graph/SMGraph.h"
 #include "Graph/Schema/SMGraphSchema.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "Graph/SMIntermediateGraph.h"
 #include "Graph/Schema/SMIntermediateGraphSchema.h"
 #include "ScopedTransaction.h"

@@ -2,41 +2,22 @@
 
 #include "SMConduit.h"
 #include "SMConduitInstance.h"
+#include "SMUtils.h"
 
-FSMConduit::FSMConduit() : Super(), bCanEnterTransition(false), bEvalWithTransitions(false),
-                           bCheckedForTransitions(false)
+FSMConduit::FSMConduit() : Super(), bCanEnterTransition(false), bCanEvaluate(true), bEvalWithTransitions(false),
+                           bIsEvaluating(false), bCheckedForTransitions(false)
 {
 }
 
 void FSMConduit::Initialize(UObject* Instance)
 {
 	Super::Initialize(Instance);
-	
-	for (FSMExposedFunctionHandler& FunctionHandler : TransitionInitializedGraphEvaluators)
-	{
-		FunctionHandler.Initialize(Instance);
-	}
-	for (FSMExposedFunctionHandler& FunctionHandler : TransitionShutdownGraphEvaluators)
-	{
-		FunctionHandler.Initialize(Instance);
-	}
-
 	ConduitEnteredGraphEvaluator.Initialize(Instance);
 }
 
 void FSMConduit::Reset()
 {
 	Super::Reset();
-
-	for (FSMExposedFunctionHandler& FunctionHandler : TransitionInitializedGraphEvaluators)
-	{
-		FunctionHandler.Reset();
-	}
-	for (FSMExposedFunctionHandler& FunctionHandler : TransitionShutdownGraphEvaluators)
-	{
-		FunctionHandler.Reset();
-	}
-
 	ConduitEnteredGraphEvaluator.Reset();
 }
 
@@ -90,14 +71,21 @@ bool FSMConduit::EndState(float DeltaSeconds, const FSMTransition* TransitionToT
 
 bool FSMConduit::GetValidTransition(TArray<TArray<FSMTransition*>>& Transitions)
 {
-	if (bCheckedForTransitions)
+	if (bCheckedForTransitions || !bCanEvaluate)
 	{
 		return false;
 	}
+
+	bIsEvaluating = true;
+#if WITH_EDITORONLY_DATA
+	bWasEvaluating = true; // Will be set to false from the editor.
+#endif
 	
 	// First check that the conduit passes.
 	Execute();
 
+	bIsEvaluating = false;
+	
 	if(!bCanEnterTransition)
 	{
 		return false;

@@ -9,7 +9,7 @@
 #include "Graph/Nodes/SMGraphNode_StateNode.h"
 #include "Graph/Nodes/SMGraphNode_StateMachineStateNode.h"
 #include "Configuration/SMEditorStyle.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "Graph/Nodes/SMGraphNode_StateMachineParentNode.h"
 
 

@@ -23,9 +23,9 @@ class SSMTextProperty : public SSMGraphProperty_Base
 	SSMTextProperty();
 
 	void Construct(const FArguments& InArgs);
-	void Finalize() override;
-	
-	FReply OnMouseButtonDoubleClick(const FGeometry& InMyGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void Finalize() override;
+
+	virtual FReply OnMouseButtonDoubleClick(const FGeometry& InMyGeometry, const FPointerEvent& InMouseEvent) override;
 	
 	void ToggleTextEdit(bool bValue);
 protected:

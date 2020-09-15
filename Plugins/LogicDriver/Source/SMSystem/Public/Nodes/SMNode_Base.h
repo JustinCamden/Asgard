@@ -83,6 +83,14 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "State Machines")
 	bool bHasUpdated;
 
+	/** Entry point to when a transition is first initialized. */
+	UPROPERTY()
+	TArray<FSMExposedFunctionHandler> TransitionInitializedGraphEvaluators;
+
+	/** Entry point to when a transition is shutdown. */
+	UPROPERTY()
+	TArray<FSMExposedFunctionHandler> TransitionShutdownGraphEvaluators;
+	
 	/** Special indicator in case this node is a duplicate within the same blueprint. If this isn't 0 then the NodeGuid will have been adjusted. */
 	UPROPERTY()
 	int32 DuplicateId;
@@ -134,14 +142,26 @@ public:
 
 	/** Create the node instance if a node instance class is set. */
 	void CreateNodeInstance();
+	void CreateStackInstances();
+	
 	/** Calls CheckNodeInstanceCompatible. */
 	void SetNodeInstanceClass(UClass* NewNodeInstanceClass);
+	
 	/** Derived nodes should overload and check for the correct type. */
 	virtual bool IsNodeInstanceClassCompatible(UClass* NewNodeInstanceClass) const;
+	
 	/** Return the current node instance. Only valid after initialization and may be nullptr. */
 	virtual USMNodeInstance* GetNodeInstance() const { return NodeInstance; }
+	
+	/** Returns the current stack instances. */
+	const TArray<USMNodeInstance*>& GetStackInstances() const { return StackNodeInstances; }
+	
+	/** Returns a specific state from the stack. */
+	USMNodeInstance* GetNodeInStack(int32 Index) const;
+	
 	/** The default node instance class. Each derived node class needs to implement. */
 	virtual UClass* GetDefaultNodeInstanceClass() const { return nullptr; }
+	
 	void AddVariableGraphProperty(const FSMGraphProperty_Base& GraphProperty);
 
 	void SetNodeName(const FString& Name);
@@ -149,14 +169,22 @@ public:
 	
 	void SetTemplateName(const FName& Name);
 	const FName& GetTemplateName() const { return TemplateName; }
+
+	void AddStackTemplateName(const FName& Name);
 	
 	/** If this node is active. */
 	virtual bool IsActive() const { return bIsActive; }
 
+	virtual void ExecuteInitializeNodes();
+	virtual void ExecuteShutdownNodes();
+	
 	/** Evaluates all graph properties. */
 	void ExecuteGraphProperties(bool bVariablesOnly = true);
 	
 #if WITH_EDITORONLY_DATA
+	virtual bool IsDebugActive() const { return bIsActive; }
+	virtual bool WasDebugActive() const { return bWasActive; }
+	
 	/** Debug helper in case a state switches to inactive in one frame. */
 	bool bWasActive = false;
 #endif
@@ -167,6 +195,7 @@ protected:
 
 	void ResetGraphProperties();
 	void CreateGraphProperties();
+	void CreateGraphPropertiesForTemplate(USMNodeInstance* Template, const TSet<FProperty*>& GraphStructPropertiesForStateMachine);
 protected:
 	/*
 	 * NodeGuid used in constructing nodes from a graph. Set initially from the editor graph.
@@ -199,7 +228,14 @@ protected:
 	/** The name of a template archetype to use when constructing an instance. This allows default values be passed into the instance. */
 	UPROPERTY()
 	FName TemplateName;
-	
+
+	UPROPERTY()
+	TArray<FName> StackTemplateNames;
+
+	/** The node instances for this stack. */
+	UPROPERTY(BlueprintReadWrite, Transient, Category = "Node Class")
+	TArray<USMNodeInstance*> StackNodeInstances;
+
 	/** The state machine instance owning this node. */
 	UPROPERTY()
 	USMInstance* OwningInstance;

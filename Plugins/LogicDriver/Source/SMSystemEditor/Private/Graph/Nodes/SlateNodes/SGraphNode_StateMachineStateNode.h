@@ -14,14 +14,14 @@ public:
 	void Construct(const FArguments& InArgs, USMGraphNode_StateNodeBase* InNode);
 
 	// SGraphNode interface
-	TArray<FOverlayWidgetInfo> GetOverlayWidgets(bool bSelected, const FVector2D& WidgetSize) const override;
+	virtual TArray<FOverlayWidgetInfo> GetOverlayWidgets(bool bSelected, const FVector2D& WidgetSize) const override;
 	// End of SGraphNode interface
 
 protected:
 	// SGraphNode_StateNode
-	const FSlateBrush* GetNameIcon() const override;
-	TSharedRef<SVerticalBox> BuildComplexTooltip() override;
-	UEdGraph* GetGraphToUseForTooltip() const override;
+	virtual const FSlateBrush* GetNameIcon() const override;
+	virtual TSharedRef<SVerticalBox> BuildComplexTooltip() override;
+	virtual UEdGraph* GetGraphToUseForTooltip() const override;
 	// ~SGraphNode_StateNode
 
 protected:

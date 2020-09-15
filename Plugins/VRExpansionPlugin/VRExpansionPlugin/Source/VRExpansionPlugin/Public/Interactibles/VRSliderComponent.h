@@ -106,13 +106,34 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 	bool bSlideDistanceIsInParentSpace;
 
+	// If true then this slider is locked in place until unlocked again
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		bool bIsLocked;
+
+	// If true then this slider will auto drop even when locked
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		bool bAutoDropWhenLocked;
+
+	// Sets if the slider is locked or not
+	UFUNCTION(BlueprintCallable, Category = "GripSettings")
+		void SetIsLocked(bool bNewLockedState);
+
+	// Uses the legacy slider logic that doesn't ABS the min and max values
+	// Retains compatibility with some older projects
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		bool bUseLegacyLogic;
+
 	// How far away from an event state before the slider allows throwing the same state again, default of 1.0 means it takes a full toggle
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 		float EventThrowThreshold;
 	bool bHitEventThreshold;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
 	int GripPriority;
+
+	// Sets the grip priority
+	UFUNCTION(BlueprintCallable, Category = "GripSettings")
+		void SetGripPriority(int NewGripPriority);
 
 	// Set this to assign a spline component to the slider
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated/*Using = OnRep_SplineComponentToFollow*/, Category = "VRSliderComponent")
@@ -245,6 +266,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float BreakDistance;
 
+	// Checks and applies auto drop if we need too
+	bool CheckAutoDrop(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation);
+
 	// Should we deny gripping on this object
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface", meta = (ScriptName = "IsDenyGripping"))
 		bool bDenyGripping;
@@ -310,7 +334,7 @@ public:
 
 		// Get closest primary slot in range
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void ClosestGripSlotInRange(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
+		void ClosestGripSlotInRange(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName,  UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
 
 	// Check if an object allows multiple grips at one time
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")

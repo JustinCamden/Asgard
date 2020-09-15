@@ -12,7 +12,7 @@
 #include "Configuration/SMExtendedEditorStyle.h"
 #include "Configuration/SMExtendedEditorSettings.h"
 #include "EdGraphSchema_K2.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 
 TSharedRef< FSMPropertyRun > FSMPropertyRun::Create(const FRunInfo& InRunInfo, const TSharedRef< const FString >& InButtonText,
                                                     const FButtonStyle& InStyle, FTextBlockStyle InTextStyle, FOnClick NavigateDelegate, FOnGenerateTooltip InTooltipDelegate, FOnGetTooltipText InTooltipTextDelegate)

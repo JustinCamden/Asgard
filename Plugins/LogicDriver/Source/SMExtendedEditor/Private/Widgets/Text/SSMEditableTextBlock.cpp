@@ -14,11 +14,11 @@
 #include "Kismet/Private/BPVariableDragDropAction.h"
 #include "Kismet/Private/MyBlueprintItemDragDropAction.h"
 #include "Graph/Nodes/SMGraphNode_StateNode.h"
-#include "SMBlueprintEditorUtils.h"
-#include "SMDragDropHelpers.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
+#include "Helpers/SMDragDropHelpers.h"
 #include "Configuration/SMEditorStyle.h"
 #include "Configuration/SMExtendedEditorStyle.h"
-#include "SMExtendedEditorUtils.h"
+#include "Utilities/SMExtendedEditorUtils.h"
 
 #define LOCTEXT_NAMESPACE "SMEditableTextBlock"
 

@@ -7,8 +7,8 @@ DEFINE_LOG_CATEGORY(LogLogicDriverExtended)
 class FSMExtendedRuntimeModule : public ISMExtendedRuntimeModule
 {
 	/** IModuleInterface implementation */
-	void StartupModule() override;
-	void ShutdownModule() override;
+	virtual void StartupModule() override;
+	virtual void ShutdownModule() override;
 };
 
 IMPLEMENT_MODULE(FSMExtendedRuntimeModule, SMExtendedRuntime)

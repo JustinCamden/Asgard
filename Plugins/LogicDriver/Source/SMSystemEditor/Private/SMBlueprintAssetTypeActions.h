@@ -2,13 +2,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AssetTypeActions_Base.h"
+#include "AssetTypeActions/AssetTypeActions_Blueprint.h"
 
-class FSMAssetTypeActions_Base : public FAssetTypeActions_Base
+class FSMAssetTypeActions_Base : public FAssetTypeActions_Blueprint
 {
 public:
 	FSMAssetTypeActions_Base(uint32 Categories);
-	uint32 GetCategories() override;
+	virtual uint32 GetCategories() override;
 	
 protected:
 	uint32 MyAssetCategory;
@@ -20,10 +20,10 @@ public:
 	FSMBlueprintAssetTypeActions(uint32 InAssetCategory);
 
 	// FAssetTypeActions_Base
-	FText GetName() const override;
-	FColor GetTypeColor() const override;
-	UClass* GetSupportedClass() const override;
-	void OpenAssetEditor(const TArray<UObject*>& InObjects, TSharedPtr<class IToolkitHost> EditWithinLevelEditor = TSharedPtr<IToolkitHost>()) override;
+	virtual FText GetName() const override;
+	virtual FColor GetTypeColor() const override;
+	virtual UClass* GetSupportedClass() const override;
+	virtual void OpenAssetEditor(const TArray<UObject*>& InObjects, TSharedPtr<class IToolkitHost> EditWithinLevelEditor = TSharedPtr<IToolkitHost>()) override;
 	// ~FAssetTypeActions_Base
 
 };
@@ -35,9 +35,9 @@ public:
 	FSMInstanceAssetTypeActions(EAssetTypeCategories::Type InAssetCategory);
 
 	// FAssetTypeActions_Base
-	FText GetName() const override;
-	FColor GetTypeColor() const override;
-	UClass* GetSupportedClass() const override;
+	virtual FText GetName() const override;
+	virtual FColor GetTypeColor() const override;
+	virtual UClass* GetSupportedClass() const override;
 	// ~FAssetTypeActions_Base
 };
 
@@ -48,10 +48,10 @@ public:
 	FSMNodeInstanceAssetTypeActions(uint32 InAssetCategory);
 
 	// FAssetTypeActions_Base
-	FText GetName() const override;
-	FColor GetTypeColor() const override;
-	UClass* GetSupportedClass() const override;
-	void OpenAssetEditor(const TArray<UObject*>& InObjects, TSharedPtr<class IToolkitHost> EditWithinLevelEditor = TSharedPtr<IToolkitHost>()) override;
+	virtual FText GetName() const override;
+	virtual FColor GetTypeColor() const override;
+	virtual UClass* GetSupportedClass() const override;
+	virtual void OpenAssetEditor(const TArray<UObject*>& InObjects, TSharedPtr<class IToolkitHost> EditWithinLevelEditor = TSharedPtr<IToolkitHost>()) override;
 	// ~FAssetTypeActions_Base
 
 };

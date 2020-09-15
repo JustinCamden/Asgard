@@ -186,6 +186,12 @@ public:
 	UPROPERTY()
 	FSMTestData StateEndEventHit;
 
+	UPROPERTY()
+	FSMTestData StateInitializedEventHit;
+
+	UPROPERTY()
+	FSMTestData StateShutdownEventHit;
+	
 	UFUNCTION()
 	void OnStateBeginEventFunc(USMStateInstance_Base* Instance);
 
@@ -196,11 +202,27 @@ public:
 	void OnStateEndEventFunc(USMStateInstance_Base* Instance);
 	
 protected:
-	void OnStateBegin_Implementation() override;
-	void OnStateUpdate_Implementation(float DeltaSeconds) override;
-	void OnStateEnd_Implementation() override;
-	void OnRootStateMachineStart_Implementation() override;
-	void OnRootStateMachineStop_Implementation() override;
+	virtual void OnStateBegin_Implementation() override;
+	virtual void OnStateUpdate_Implementation(float DeltaSeconds) override;
+	virtual void OnStateEnd_Implementation() override;
+	virtual void OnRootStateMachineStart_Implementation() override;
+	virtual void OnRootStateMachineStop_Implementation() override;
+	virtual void OnStateInitialized_Implementation() override;
+	virtual void OnStateShutdown_Implementation() override;
+
+public:
+	UPROPERTY(BlueprintAssignable, Category = "State Machine Tests")
+	FTestDelegateSignature StateEvent;
+};
+
+UCLASS(Blueprintable)
+class USMStateTestInstance2 : public USMStateTestInstance
+{
+public:
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "State Machine Tests")
+	int32 AnotherExposedInt;
 };
 
 UCLASS(Blueprintable)
@@ -221,10 +243,25 @@ public:
 	UPROPERTY()
 	FSMTestData StateEndHit;
 
+	UPROPERTY()
+	FSMTestData RootSMStartHit;
+
+	UPROPERTY()
+	FSMTestData RootSMStopHit;
+
+	UPROPERTY()
+	FSMTestData InitializeHit;
+
+	UPROPERTY()
+	FSMTestData ShutdownHit;
 protected:
-	void OnStateBegin_Implementation() override;
-	void OnStateUpdate_Implementation(float DeltaSeconds) override;
-	void OnStateEnd_Implementation() override;
+	virtual void OnStateBegin_Implementation() override;
+	virtual void OnStateUpdate_Implementation(float DeltaSeconds) override;
+	virtual void OnStateEnd_Implementation() override;
+	virtual void OnRootStateMachineStart_Implementation() override;
+	virtual void OnRootStateMachineStop_Implementation() override;
+	virtual void OnStateInitialized_Implementation() override;
+	virtual void OnStateShutdown_Implementation() override;
 };
 
 UCLASS(Blueprintable)
@@ -258,9 +295,11 @@ public:
 	UFUNCTION()
 	void OnTransitionEnteredEventFunc(USMTransitionInstance* TransitionInstance);
 
+	bool bCanTransition = false;
 protected:
-	void OnTransitionInitialized_Implementation() override;
-	void OnTransitionShutdown_Implementation() override;
+	virtual void OnTransitionInitialized_Implementation() override;
+	virtual void OnTransitionShutdown_Implementation() override;
+	virtual bool CanEnterTransition_Implementation() const override { return bCanTransition; }
 };
 
 UCLASS(Blueprintable)
@@ -276,7 +315,17 @@ public:
 	FText EvaluatedText;
 
 protected:
-	void OnStateBegin_Implementation() override;
+	virtual void OnStateBegin_Implementation() override;
+};
+
+UCLASS(Blueprintable)
+class USMTextGraphStateExtra : public USMTextGraphState
+{
+public:
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "Test", meta = (DisplayOrder = 1))
+	FString StringVar;
 };
 
 UCLASS()

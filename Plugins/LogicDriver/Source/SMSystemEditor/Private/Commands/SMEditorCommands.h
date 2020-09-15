@@ -16,7 +16,7 @@ public:
 	}
 
 	// TCommand
-	void RegisterCommands() override;
+	virtual void RegisterCommands() override;
 	FORCENOINLINE static const FSMEditorCommands& Get();
 	// ~TCommand
 
@@ -32,6 +32,12 @@ public:
 	/** Create a nested state machine from existing nodes. */
 	TSharedPtr<FUICommandInfo> CollapseToStateMachine;
 
+	/** Combine multiple states into the same state stack. */
+	TSharedPtr<FUICommandInfo> CutAndMergeStates;
+
+	/** Combine multiple states into the same state stack. */
+	TSharedPtr<FUICommandInfo> CopyAndMergeStates;
+	
 	/** Converts a nested state machine to a referenced state machine. */
 	TSharedPtr<FUICommandInfo> ConvertToStateMachineReference;
 
@@ -67,6 +73,9 @@ public:
 
 	/** Go to a graph property. */
 	TSharedPtr<FUICommandInfo> GoToPropertyGraph;
+
+	/** Go to the blueprint for this property. Could be the node blueprint or a state stack blueprint. */
+	TSharedPtr<FUICommandInfo> GoToPropertyBlueprint;
 
 	/** Use the graph to edit. */
 	TSharedPtr<FUICommandInfo> ConvertPropertyToGraphEdit;

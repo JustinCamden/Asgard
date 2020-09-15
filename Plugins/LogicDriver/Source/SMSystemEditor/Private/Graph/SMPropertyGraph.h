@@ -35,6 +35,12 @@ class SMSYSTEMEDITOR_API USMPropertyGraph : public USMGraphK2
 	virtual void SetPropertyOnGraph(FProperty* Property);
 	virtual void SetFunctionOnGraph(UFunction* Function);
 
+	/**
+	 *	Called after we manually clone nodes into this graph.
+	 *	@param OldGraph The original graph used in the clone, available in case there are properties that need to be copied.
+	 */
+	virtual void OnGraphManuallyCloned(USMPropertyGraph* OldGraph) {}
+	
 	/** Remove any nodes that aren't connected to the ResultNode. */
 	void PruneDisconnectedNodes();
 

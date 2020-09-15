@@ -4,10 +4,11 @@
 #include "Graph/Schema/SMGraphK2Schema.h"
 #include "Graph/SMTransitionGraph.h"
 #include "Graph/SMConduitGraph.h"
+#include "Graph/SMStateGraph.h"
 #include "BlueprintNodeSpawner.h"
 #include "BlueprintActionDatabaseRegistrar.h"
-#include "SMBlueprintEditorUtils.h"
-#include "SMBlueprint.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
+#include "Blueprints/SMBlueprint.h"
 
 
 #define LOCTEXT_NAMESPACE "SMTransitionInitializedNode"
@@ -35,19 +36,20 @@ FText USMGraphK2Node_TransitionInitializedNode::GetMenuCategory() const
 
 FText USMGraphK2Node_TransitionInitializedNode::GetNodeTitle(ENodeTitleType::Type TitleType) const
 {
-	const bool IsConduit = Cast<USMConduitGraph>(FSMBlueprintEditorUtils::FindTopLevelOwningGraph(GetGraph())) != nullptr;
+	const bool IsTransition = Cast<USMTransitionGraph>(FSMBlueprintEditorUtils::FindTopLevelOwningGraph(GetGraph())) != nullptr;
 	
 	if ((TitleType == ENodeTitleType::MenuTitle || TitleType == ENodeTitleType::ListView))
 	{
-		return IsConduit ? LOCTEXT("AddConduitInitializedEvent", "Add Event On Conduit Initialized") : LOCTEXT("AddTransitionInitializedEvent", "Add Event On Transition Initialized");
+		return LOCTEXT("AddTransitionInitializedEvent", "Add Event On Transition Initialized");
 	}
 
-	return FText::FromString(IsConduit ? TEXT("On Conduit Initialized") : TEXT("On Transition Initialized"));
+	return FText::FromString(IsTransition ? TEXT("On Transition Initialized") : TEXT("On Node Initialized (With Transitions)"));
 }
 
 FText USMGraphK2Node_TransitionInitializedNode::GetTooltipText() const
 {
-	return LOCTEXT("TransitionInitializedNodeTooltip", "Called when the state leading to this node is entered.");
+	return LOCTEXT("TransitionInitializedNodeTooltip", "For transitions and conduits: Called after the state leading to this node is initialized but before OnStateBegin.\
+\nFor states: Called before OnStateBegin and before transitions are initialized.");
 }
 
 void USMGraphK2Node_TransitionInitializedNode::GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const
@@ -75,7 +77,7 @@ bool USMGraphK2Node_TransitionInitializedNode::IsActionFilteredOut(FBlueprintAct
 	for (UEdGraph* Graph : Filter.Context.Graphs)
 	{
 		// Only works on transition and conduit graphs.
-		if (!Graph->IsA<USMTransitionGraph>() && !Graph->IsA<USMConduitGraph>())
+		if (!Graph->IsA<USMTransitionGraph>() && !Graph->IsA<USMConduitGraph>() && !Graph->IsA<USMStateGraph>())
 		{
 			return true;
 		}
@@ -86,7 +88,7 @@ bool USMGraphK2Node_TransitionInitializedNode::IsActionFilteredOut(FBlueprintAct
 
 bool USMGraphK2Node_TransitionInitializedNode::IsCompatibleWithGraph(UEdGraph const* Graph) const
 {
-	return Graph->IsA<USMTransitionGraph>() || Graph->IsA<USMConduitGraph>();
+	return Graph->IsA<USMTransitionGraph>() || Graph->IsA<USMConduitGraph>() || Graph->IsA<USMStateGraph>();
 }
 
 #undef LOCTEXT_NAMESPACE

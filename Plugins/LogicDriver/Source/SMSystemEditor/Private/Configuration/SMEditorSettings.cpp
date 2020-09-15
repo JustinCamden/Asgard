@@ -20,8 +20,9 @@ USMEditorSettings::USMEditorSettings()
 	
 	TransitionEmptyColor = FLinearColor(0.5f, 0.5f, 0.5f, 0.5f);
 	TransitionValidColor = FLinearColor(1.f, 1.f, 1.f, 1.f);
-	TransitionWithEntryLogic = FLinearColor(0.2f, 0.8f, 1.f, 1.f);
-	TransitionHoverCover = FLinearColor(0.724f, 0.256f, 0.0f, 1.0f);
+	TransitionHoverColor = FLinearColor(0.724f, 0.256f, 0.0f, 1.0f);
+	bEnableTransitionWithEntryLogicColor = false;
+	TransitionWithEntryLogicColor = FLinearColor(0.2f, 0.8f, 1.f, 1.f);
 	
 	ActiveStateColor = FLinearColor(1.f, 0.6f, 0.35f);
 	ActiveTransitionColor = FLinearColor::Red;
@@ -29,4 +30,7 @@ USMEditorSettings::USMEditorSettings()
 	TimeToDisplayLastActiveState = 2.f;
 	TimeToFadeLastActiveState = 0.25f;
 	TimeToFadeLastActiveTransition = 0.7f;
+
+	bDisplayTransitionEvaluation = true;
+	EvaluatingTransitionColor = FLinearColor(0.92f, .2f, .92f);
 }

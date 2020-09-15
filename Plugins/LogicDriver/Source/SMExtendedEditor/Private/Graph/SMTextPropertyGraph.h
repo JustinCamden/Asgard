@@ -19,12 +19,13 @@ public:
 
 	UEdGraphPin* GetFormatTextNodePin() const;
 
-	void NotifyGraphChanged(const FEdGraphEditAction& Action) override;
+	virtual void NotifyGraphChanged(const FEdGraphEditAction& Action) override;
 	
 	// USMPropertyGraph
-	void RefreshProperty(bool bModify = true) override;
-	void ResetGraph() override;
-	void SetUsingGraphToEdit(bool bValue) override;
+	virtual void RefreshProperty(bool bModify = true) override;
+	virtual void ResetGraph() override;
+	virtual void SetUsingGraphToEdit(bool bValue) override;
+	virtual void OnGraphManuallyCloned(USMPropertyGraph* OldGraph) override;
 	// ~USMPropertyGraph
 
 	/** Resets graph completely from updated text. */
@@ -43,6 +44,7 @@ public:
 
 protected:
 	void SetFormatTextNodeText(const FText& NewText);
+	void FindAndSetFormatTextNode();
 	
 protected:
 	/** Variable name to variable guid. */

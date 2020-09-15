@@ -2,7 +2,6 @@
 #pragma once
 
 #include "Tickable.h"
-#include "GameFramework/Actor.h"
 #include "Net/UnrealNetwork.h"
 #include "SMStateMachine.h"
 #include "SMStateMachineInstance.h"
@@ -41,15 +40,16 @@ struct FSMDebugStateMachine
 			}
 
 			// In the case of duplicate nodes find the most recent active one.
-			// This can occur when referencing parent state machine nodes multiple times.
+			// This can occur when referencing parent state machine nodes multiple times
+			// and from any state transitions.
 			FSMNode_Base* LastActiveNode = nullptr;
 			for(FSMNode_Base* Node : *Nodes)
 			{
-				if(Node->IsActive())
+				if(Node->IsDebugActive())
 				{
 					return Node;
 				}
-				if(Node->bWasActive)
+				if(Node->WasDebugActive())
 				{
 					LastActiveNode = Node;
 				}
@@ -75,7 +75,7 @@ struct FSMDebugStateMachine
 /**
  * The base class all blueprint state machines inherit from. The compiled state machine is accessible through GetRootStateMachine().
  */
-UCLASS(Blueprintable, BlueprintType, classGroup = "State Machine", hideCategories = (SMInstance), meta = (DisplayName = "State Machine Instance"))
+UCLASS(Blueprintable, BlueprintType, classGroup = "State Machine", hideCategories = (SMInstance), AutoExpandCategories =("State Machine Instance|Tick", "State Machine Instance|Logging"), meta = (DisplayName = "State Machine Instance"))
 class SMSYSTEM_API USMInstance : public UObject, public FTickableGameObject, public ISMStateMachineInterface, public ISMInstanceInterface
 {
 	GENERATED_BODY()
@@ -87,52 +87,53 @@ public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Logic Driver|State Machine Instances")
 	void Tick(float DeltaTime) override;
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
-	bool IsTickable() const override;
-	bool IsTickableInEditor() const override { return false; }
-	ETickableTickType GetTickableTickType() const override;
+	virtual bool IsTickable() const override;
+	virtual bool IsTickableInEditor() const override { return false; }
+	virtual ETickableTickType GetTickableTickType() const override;
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
-	bool IsTickableWhenPaused() const override { return bCanTickWhenPaused; }
-	UWorld* GetTickableGameObjectWorld() const override;
-	TStatId GetStatId() const override;
+	virtual bool IsTickableWhenPaused() const override { return bCanTickWhenPaused; }
+
+	virtual UWorld* GetTickableGameObjectWorld() const override;
+	virtual TStatId GetStatId() const override;
 	// ~FTickableGameObject
 
 	// UObject
-	bool IsSupportedForNetworking() const override { return true; }
-	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const override;
-	void BeginDestroy() override;
+	virtual bool IsSupportedForNetworking() const override { return true; }
+	virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const override;
+	virtual void BeginDestroy() override;
 	/** Custom implementation to return the Context World. */
-	UWorld* GetWorld() const override;
+	virtual UWorld* GetWorld() const override;
 	// ~UObject
 
 	// ISMInstanceInterface
 	/** The object which this state machine is running for. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
-	UObject* GetContext() const override;
+	virtual UObject* GetContext() const override;
 	// ~ISMInstanceInterface
 
 	// USMStateMachineInterface
 	/** Initialize bound functions and load in the context. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
-	void Initialize(UObject* Context = nullptr) override;
+	virtual void Initialize(UObject* Context = nullptr) override;
 
 	/** Start the root state machine. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
-	void Start() override;
+	virtual void Start() override;
 
 	/** Manual way of updating the root state machine if tick is disabled. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
-	void Update(float DeltaSeconds=0.f) override;
+	virtual void Update(float DeltaSeconds=0.f) override;
 	
 	/** This will complete the state machine's current state and force the machine to end regardless of if the state is an end state. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
-	void Stop() override;
+	virtual void Stop() override;
 
 	/**
 	 * Shutdown this instance. Calls Stop. Must call initialize again before use.
 	 * If the goal is to restart the state machine later call Stop instead.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
-	void Shutdown() override;
+	virtual void Shutdown() override;
 
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
 	void StartWithNewContext(UObject* Context);
@@ -144,7 +145,7 @@ public:
 	 * All transitions are evaluated as normal starting from the root state machine down.
 	 * Depending on super state transitions it's possible the state machine this state is part of may exit.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
 	void EvaluateTransitions();
 	
 	/**
@@ -299,6 +300,14 @@ public:
 	/** Quickly return a referenced instance given a state machine guid. This always executes from the master. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
 	USMInstance* GetReferencedInstanceByGuid(const FGuid& Guid) const;
+
+	/** Quickly return a state instance given the state guid. This always executes from the master. */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
+	USMStateInstance_Base* GetStateInstanceByGuid(const FGuid& Guid) const;
+
+	/** Quickly return a transition instance given a transition guid. This always executes from the master. */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
+	USMTransitionInstance* GetTransitionInstanceByGuid(const FGuid& Guid) const;
 	
 	/** Quick lookup of any state by guid. Includes all nested. */
 	FSMState_Base* GetStateByGuid(const FGuid& Guid) const;
@@ -362,7 +371,7 @@ public:
 	/** Sets a new context. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
 	void SetContext(UObject* Context);
-
+	
 	/** Get all mapped PathGuids to nodes. */
 	const TMap<FGuid, FSMNode_Base*>& GetNodeMap() const { return GuidNodeMap; }
 	
@@ -431,6 +440,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Logic Driver|State Machine Instances")
 	TSubclassOf<class USMStateMachineInstance> GetStateMachineClass() const { return StateMachineClass; }
+
+	/**
+	 * Sets the state machine node instance class.
+	 *
+	 * @param NewStateMachineClass The state machine class to set.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
+	void SetStateMachineClass(TSubclassOf<class USMStateMachineInstance> NewStateMachineClass) { StateMachineClass = NewStateMachineClass; }
 	
 	/** Called when the instance is first initialized.  */
 	UFUNCTION(BlueprintNativeEvent, Category = "Logic Driver|State Machine Instances")
@@ -493,6 +510,8 @@ public:
 #if WITH_EDITORONLY_DATA
 	FSMDebugStateMachine& GetDebugStateMachine() { return DebugStateMachine; }
 	const FSMDebugStateMachine& GetDebugStateMachineConst() const { return DebugStateMachine; }
+
+	bool IsLoggingEnabled() const { return bEnableLogging; }
 #endif
 
 protected:
@@ -507,6 +526,10 @@ protected:
 	/** Internal update logic. Can be called during an update and used by event triggers. */
 	UFUNCTION(BlueprintCallable, BlueprintInternalUseOnly, Category = "Logic Driver|State Machine Instances")
 	void Internal_Update(float DeltaSeconds);
+
+	/** Internal cleanup logic after an auto-bound event fires. */
+	UFUNCTION(BlueprintCallable, BlueprintInternalUseOnly, Category = "Logic Driver|State Machine Instances")
+	void Internal_EventCleanup(const FGuid& NodeGuid);
 	
 	/** Assemble a complete map of all nested nodes and state machines. Builds out GuidNodeMap and StateMachineGuids. InstancesMapped keeps track
 	 * of all instances built to prevent stack overflow in the event of state machine references that self reference. */
@@ -561,41 +584,63 @@ protected:
 	/** If this instance is owned by another instance making this a reference. */
 	UPROPERTY()
 	USMInstance* ReferenceOwner;
-	
-	UPROPERTY(Transient)
-	float MaxTimeToWaitForUpdate;
 
 	/** The custom node instance class to use for this state machine. This is not the same as USMInstance. */
-	UPROPERTY(EditDefaultsOnly, Category = "State Machine Instances", meta = (BlueprintBaseOnly, DisplayName = "Node Class"))
+	UPROPERTY(EditDefaultsOnly, Category = "State Machine Instance", meta = (BlueprintBaseOnly, DisplayName = "Node Class"))
 	TSubclassOf<class USMStateMachineInstance> StateMachineClass;
+
+	/** Automatically calculate delta seconds if none are provided. Requires context with a valid World. */
+	UPROPERTY(EditAnywhere, Category = "State Machine Instance")
+	bool bAutoManageTime = true;
+
+	/** Should this instance stop itself once an end state has been reached. An Update call is required for this to occur. */
+	UPROPERTY(EditAnywhere, Category = "State Machine Instance")
+	bool bStopOnEndState = false;
 	
 	/** Should this instance tick. By default it will update the state machine. */
-	UPROPERTY(EditAnywhere, Category = "State Machine Instances")
+	UPROPERTY(EditAnywhere, Category = "State Machine Instance|Tick")
 	bool bCanEverTick = true;
 
 	/** Should this instance tick when the game is paused. */
-	UPROPERTY(EditAnywhere, Category = "State Machine Instances", meta = (EditCondition = "bCanEverTick"))
+	UPROPERTY(EditAnywhere, Category = "State Machine Instance|Tick", meta = (EditCondition = "bCanEverTick"))
 	bool bCanTickWhenPaused = false;
 
 	/** Time in seconds between native ticks. This mostly affects the "Update" rate of the state machine. Overloaded Ticks won't be affected. */
-	UPROPERTY(EditAnywhere, DisplayName = "Tick Interval", Category = "State Machine Instances", meta = (EditCondition = "bCanEverTick", ClampMin = "0.0"))
+	UPROPERTY(EditAnywhere, Category = "State Machine Instance|Tick", DisplayName = "Tick Interval", meta = (EditCondition = "bCanEverTick", ClampMin = "0.0"))
 	float TickInterval;
 
 	/**
 	 * Setting to false physically prevents the tick function from being registered and the instance from ever ticking.
 	 * This is different from bCanEverTick in that it cannot be changed and it also offers slightly better performance.
 	 */
-	UPROPERTY(EditDefaultsOnly, AdvancedDisplay, Category = "State Machine Instances")
+	UPROPERTY(EditDefaultsOnly, Category = "State Machine Instance|Tick")
 	bool bTickRegistered = true;
 
 	/**
 	 * Allow the state machine to tick before it is initialized.
 	 * This likely isn't necessary as CreateStateMachineInstance will initialize the state machine.
 	 */
-	UPROPERTY(EditDefaultsOnly, AdvancedDisplay, Category = "State Machine Instances", meta = (EditCondition = "bTickRegistered"))
+	UPROPERTY(EditDefaultsOnly, Category = "State Machine Instance|Tick", meta = (EditCondition = "bTickRegistered"))
 	bool bTickBeforeInitialize;
+
+#if WITH_EDITORONLY_DATA
+	/** Enable info logging for the state machine. */
+	UPROPERTY(EditDefaultsOnly, Category = "State Machine Instance|Logging")
+	bool bEnableLogging = false;
+
+	/** Log when a state change occurs. This includes when a state machine starts or exits where transitions won't apply. */
+	UPROPERTY(EditDefaultsOnly, Category = "State Machine Instance|Logging", meta = (EditCondition = "bEnableLogging"))
+	bool bLogStateChange = true;
+
+	/** Log whenever a transition occurs. */
+	UPROPERTY(EditDefaultsOnly, Category = "State Machine Instance|Logging", meta = (EditCondition = "bEnableLogging"))
+	bool bLogTransitionTaken = true;
+#endif
 	
-	/** Time since the last valid tick occured. */
+	UPROPERTY(Transient)
+	float MaxTimeToWaitForUpdate;
+	
+	/** Time since the last valid tick occurred. */
 	UPROPERTY()
 	float TimeSinceAllowedTick;
 
@@ -604,10 +649,6 @@ protected:
 
 	UPROPERTY(Transient)
 	float WorldTimeDelta;
-
-	/** Automatically calculate delta seconds if none are provided. Requires context with a valid World. */
-	UPROPERTY(EditAnywhere, Category = "State Machine Instances")
-	bool bAutoManageTime = true;
 	
 	/** The Update method will call Tick only if Update was not called by native Tick. */
 	UPROPERTY()
@@ -618,25 +659,21 @@ protected:
 
 	UPROPERTY(Transient)
 	bool bIsUpdating;
-	
-	/** Should this instance stop itself once an end state has been reached. An Update call is required for this to occur. */
-	UPROPERTY(EditAnywhere, Category = "State Machine Instances")
-	bool bStopOnEndState = false;
 
 	/** Should this instance be allowed to process transitions. */
 	UPROPERTY(Transient)
-	bool bCanEvaluateTransitionsLocally = true;
+	uint32 bCanEvaluateTransitionsLocally: 1;
 
 	/** Should this instance take transitions or only notify the server. */
 	UPROPERTY(Transient)
-	bool bCanTakeTransitionsLocally = true;
+	uint32 bCanTakeTransitionsLocally: 1;
 
 	/** Should this instance be allowed to execute state logic. */
 	UPROPERTY(Transient)
-	bool bCanExecuteStateLogic = true;
+	uint32 bCanExecuteStateLogic: 1;
 
 	UPROPERTY(Transient, ReplicatedUsing = REP_StartChanged)
-	bool R_bHasStarted;
+	uint32 R_bHasStarted: 1;
 
 public:
 	/*

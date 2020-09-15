@@ -7,8 +7,8 @@
 #include "Kismet/Private/BPFunctionDragDropAction.h"
 #include "Graph/Nodes/PropertyNodes/SMGraphK2Node_PropertyNode.h"
 #include "Graph/Nodes/PropertyNodes/SMGraphK2Node_GraphPropertyNode.h"
-#include "SMBlueprintEditorUtils.h"
-#include "SMDragDropHelpers.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
+#include "Helpers/SMDragDropHelpers.h"
 
 #define LOCTEXT_NAMESPACE "SSMGraphProperty"
 

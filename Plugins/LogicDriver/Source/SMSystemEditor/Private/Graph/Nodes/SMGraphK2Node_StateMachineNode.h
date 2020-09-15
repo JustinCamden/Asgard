@@ -18,26 +18,26 @@ class USMGraphK2Node_StateMachineNode : public USMGraphK2Node_Base
 
 public:
 	//~ Begin UK2Node Interface
-	void AllocateDefaultPins() override;
-	void OnRenameNode(const FString& NewName) override;
-	void PostPlacedNewNode() override;
-	void PostPasteNode() override;
-	void DestroyNode() override;
-	TSharedPtr<class INameValidatorInterface> MakeNameValidator() const override;
-	FText GetMenuCategory() const override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	UObject* GetJumpTargetForDoubleClick() const override;
+	virtual void AllocateDefaultPins() override;
+	virtual void OnRenameNode(const FString& NewName) override;
+	virtual void PostPlacedNewNode() override;
+	virtual void PostPasteNode() override;
+	virtual void DestroyNode() override;
+	virtual TSharedPtr<class INameValidatorInterface> MakeNameValidator() const override;
+	virtual FText GetMenuCategory() const override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual UObject* GetJumpTargetForDoubleClick() const override;
 	/** Limit blueprints this shows up in. */
-	bool IsActionFilteredOut(class FBlueprintActionFilter const& Filter) override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
-	bool IsNodePure() const override;
+	virtual bool IsActionFilteredOut(class FBlueprintActionFilter const& Filter) override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual bool IsNodePure() const override;
 	/** Required to show up in BP right click context menu. */
-	void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
 	//~ End UK2Node Interface
 
 	// USMGraphK2Node_Base
-	bool CanCollapseNode() const override { return false; }
-	bool CanCollapseToFunctionOrMacro() const override { return false; }
+	virtual bool CanCollapseNode() const override { return false; }
+	virtual bool CanCollapseToFunctionOrMacro() const override { return false; }
 	// ~USMGraphK2Node_Base
 
 	FString GetStateMachineName() const;

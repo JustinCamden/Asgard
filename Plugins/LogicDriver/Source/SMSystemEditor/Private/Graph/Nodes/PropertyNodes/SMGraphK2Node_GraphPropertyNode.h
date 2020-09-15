@@ -15,14 +15,14 @@ public:
 	FSMGraphProperty GraphProperty;
 	
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
+	virtual void AllocateDefaultPins() override;
 	// ~UedGraphNode
 	
 	// USMGraphK2Node_PropertyNode
-	FSMGraphProperty_Base* GetPropertyNode() override { return &GraphProperty; }
-	void SetPropertyNode(FSMGraphProperty_Base* NewNode) override { GraphProperty = *(FSMGraphProperty*)NewNode; }
-	TSharedPtr<SSMGraphProperty_Base> GetGraphNodeWidget() const override;
-	bool IsConsideredForDefaultProperty() const override { return GraphProperty.WidgetInfo.bConsiderForDefaultWidget; }
-	void DefaultPropertyActionWhenPlaced(TSharedPtr<SWidget> Widget) override;
+	virtual FSMGraphProperty_Base* GetPropertyNode() override { return &GraphProperty; }
+	virtual void SetPropertyNode(FSMGraphProperty_Base* NewNode) override { GraphProperty = *(FSMGraphProperty*)NewNode; }
+	virtual TSharedPtr<SSMGraphProperty_Base> GetGraphNodeWidget() const override;
+	virtual bool IsConsideredForDefaultProperty() const override { return GraphProperty.WidgetInfo.bConsiderForDefaultWidget; }
+	virtual void DefaultPropertyActionWhenPlaced(TSharedPtr<SWidget> Widget) override;
 	// ~USMGraphK2Node_PropertyNode
 };

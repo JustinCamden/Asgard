@@ -24,18 +24,18 @@ class SMSYSTEMEDITOR_API USMGraphK2Node_PropertyNode_Base : public USMGraphK2Nod
 public:
 	
 	// UEdGraphNode
-	bool IsNodePure() const override { return true; }
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	void PostPlacedNewNode() override;
-	void PinDefaultValueChanged(UEdGraphPin* Pin) override;
-	void NotifyPinConnectionListChanged(UEdGraphPin* Pin) override;
-	bool HasExternalDependencies(TArray<UStruct*>* OptionalOutput) const override;
-	bool CanCollapseNode() const override { return false; }
+	virtual bool IsNodePure() const override { return true; }
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual void PostPlacedNewNode() override;
+	virtual void PinDefaultValueChanged(UEdGraphPin* Pin) override;
+	virtual void NotifyPinConnectionListChanged(UEdGraphPin* Pin) override;
+	virtual bool HasExternalDependencies(TArray<UStruct*>* OptionalOutput) const override;
+	virtual bool CanCollapseNode() const override { return false; }
 	// ~UedGraphNode
 
 	// USMGraphK2Node_RuntimeNodeReference
-	void PreCompileValidate(FCompilerResultsLog& MessageLog) override;
+	virtual void PreCompileValidate(FCompilerResultsLog& MessageLog) override;
 	// ~USMGraphK2Node_RuntimeNodeReference
 	
 	USMPropertyGraph* GetPropertyGraph() const { return Cast<USMPropertyGraph>(GetGraph()); }
@@ -69,6 +69,8 @@ public:
 	class USMGraphNode_Base* GetOwningGraphNode() const;
 	/** Open the property graph for this node. Should be the containing graph. */
 	void JumpToPropertyGraph();
+	/* Opens the template blueprint for this node. */
+	void JumpToTemplateBlueprint();
 	
 	/** Get the widget to represent this property node within a state machine graph node. */
 	virtual TSharedPtr<class SSMGraphProperty_Base> GetGraphNodeWidget() const;
@@ -80,7 +82,6 @@ public:
 	virtual TSharedPtr<SWidget> GetToggleEditGraphDetailWidget() const;
 	/** This forwards up context menu actions when the owning state machine graph node is right clicked on over this property. */
 	void GetContextMenuActionsForOwningNode(const UEdGraph* CurrentGraph, const UEdGraphNode* InGraphNode, const UEdGraphPin* InGraphPin, class UToolMenu* ToolMenu, bool bIsDebugging) const;
-
 
 	/** If the sgraphnode doesn't have a default name field then this property may be used as the default property to edit. */
 	virtual bool IsConsideredForDefaultProperty() const { return false; }

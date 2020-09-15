@@ -7,7 +7,7 @@
 #include "Graph/Schema/SMTransitionGraphSchema.h"
 #include "Graph/SMTransitionGraph.h"
 #include "Graph/Nodes/SMGraphNode_StateNode.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "Kismet2/KismetEditorUtilities.h"
 #include "Helpers/SMGraphK2Node_FunctionNodes.h"
 #include "Helpers/SMGraphK2Node_StateWriteNodes.h"
@@ -20,8 +20,10 @@
 #define LOCTEXT_NAMESPACE "SMGraphTransition"
 
 USMGraphNode_TransitionEdge::USMGraphNode_TransitionEdge(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer), DelegateOwnerInstance(SMDO_This), DelegateOwnerClass(nullptr), PriorityOrder_DEPRECATED(0),
-	  bCanEvaluate_DEPRECATED(true), bCanEvaluateFromEvent_DEPRECATED(true), bCanEvalWithStartState_DEPRECATED(true)
+	: Super(ObjectInitializer), DelegateOwnerInstance(SMDO_This), DelegateOwnerClass(nullptr),
+	  PriorityOrder_DEPRECATED(0),
+	  bCanEvaluate_DEPRECATED(true), bCanEvaluateFromEvent_DEPRECATED(true), bCanEvalWithStartState_DEPRECATED(true),
+	  bWasEvaluating(false)
 {
 	bCanRenameNode = false;
 }
@@ -31,6 +33,7 @@ void USMGraphNode_TransitionEdge::SetRuntimeDefaults(FSMTransition& Transition) 
 	if (USMTransitionInstance* Instance = Cast<USMTransitionInstance>(GetNodeTemplate()))
 	{
 		Transition.bAlwaysFalse = !PossibleToTransition();
+		Transition.ConditionalEvaluationType = GetTransitionGraph()->GetConditionalEvaluationType();
 		Transition.Priority = Instance->PriorityOrder;
 		Transition.bCanEvaluate = Instance->bCanEvaluate;
 		Transition.bCanEvaluateFromEvent = Instance->bCanEvaluateFromEvent;
@@ -177,6 +180,48 @@ void USMGraphNode_TransitionEdge::DestroyNode()
 	}
 }
 
+void USMGraphNode_TransitionEdge::ResetDebugState()
+{
+	Super::ResetDebugState();
+
+	// Prevents a previous cycle from showing it as running.
+	if (const FSMTransition* DebugNode = (FSMTransition*)GetDebugNode())
+	{
+		const_cast<FSMTransition*>(DebugNode)->bWasEvaluating = bWasEvaluating = false;
+	}
+}
+
+void USMGraphNode_TransitionEdge::UpdateTime(float DeltaTime)
+{
+	const USMEditorSettings* Settings = FSMBlueprintEditorUtils::GetEditorSettings();
+	if (Settings->bDisplayTransitionEvaluation)
+	{
+		if (const FSMTransition* DebugNode = (FSMTransition*)GetDebugNode())
+		{
+			if (WasEvaluating() && (DebugNode->IsActive() || DebugNode->bWasActive))
+			{
+				// Cancel evaluation display and let the super method reset.
+				bWasEvaluating = false;
+				bWasDebugActive = false;
+			}
+			else if (DebugNode->bIsEvaluating || DebugNode->bWasEvaluating)
+			{
+				// Not active but evaluating.
+				bIsDebugActive = true;
+				bWasEvaluating = true;
+			}
+			const_cast<FSMTransition*>(DebugNode)->bWasEvaluating = false;
+		}
+	}
+
+	Super::UpdateTime(DeltaTime);
+
+	if (!WasDebugNodeActive())
+	{
+		bWasEvaluating = false;
+	}
+}
+
 void USMGraphNode_TransitionEdge::ImportDeprecatedProperties()
 {
 	Super::ImportDeprecatedProperties();
@@ -245,6 +290,23 @@ UClass* USMGraphNode_TransitionEdge::GetSelectedDelegateOwnerClass() const
 	{
 		return FBlueprintEditorUtils::FindBlueprintForNodeChecked(this)->SkeletonGeneratedClass;
 	}
+	
+	if (DelegateOwnerInstance == SMDO_PreviousState)
+	{
+		if (USMGraphNode_StateNodeBase* PreviousState = GetFromState())
+		{
+			if (UClass* NodeClass = PreviousState->GetNodeClass())
+			{
+				if (UBlueprint* Blueprint = UBlueprint::GetBlueprintFromClass(NodeClass))
+				{
+					return Blueprint->SkeletonGeneratedClass;
+				}
+
+				return NodeClass;
+			}
+		}
+	}
+	
 	if (UBlueprintGeneratedClass* BPGC = Cast<UBlueprintGeneratedClass>(DelegateOwnerClass))
 	{
 		if(UBlueprint* BP = Cast<UBlueprint>(BPGC->ClassGeneratedBy))
@@ -292,6 +354,7 @@ void USMGraphNode_TransitionEdge::InitTransitionDelegate()
 		OurEventNode->NodePosX = Position.X;
 		OurEventNode->NodePosY = Position.Y;
 		OurEventNode->SetEventReferenceFromDelegate(DelegateProperty, DelegateOwnerInstance);
+		OurEventNode->TransitionClass = TransitionClass;
 		NodeCreator.Finalize();
 		if (PreviousThenPin)
 		{
@@ -334,8 +397,8 @@ void USMGraphNode_TransitionEdge::GoToTransitionEventNode()
 
 FString USMGraphNode_TransitionEdge::GetTransitionName() const
 {
-	USMGraphNode_StateNodeBase* State1 = GetStartNode();
-	USMGraphNode_StateNodeBase* State2 = GetEndNode();
+	USMGraphNode_StateNodeBase* State1 = GetFromState();
+	USMGraphNode_StateNodeBase* State2 = GetToState();
 
 	const FString State1Name = State1 ? State1->GetStateName() : "StartState";
 	const FString State2Name = State2 ? State2->GetStateName() : "EndState";
@@ -371,7 +434,12 @@ bool USMGraphNode_TransitionEdge::PossibleToTransition() const
 	return false;
 }
 
-USMGraphNode_StateNodeBase* USMGraphNode_TransitionEdge::GetStartNode() const
+USMTransitionGraph* USMGraphNode_TransitionEdge::GetTransitionGraph() const
+{
+	return CastChecked<USMTransitionGraph>(BoundGraph);
+}
+
+USMGraphNode_StateNodeBase* USMGraphNode_TransitionEdge::GetFromState() const
 {
 	if (Pins.Num() && Pins[0]->LinkedTo.Num() > 0)
 	{
@@ -381,7 +449,7 @@ USMGraphNode_StateNodeBase* USMGraphNode_TransitionEdge::GetStartNode() const
 	return nullptr;
 }
 
-USMGraphNode_StateNodeBase* USMGraphNode_TransitionEdge::GetEndNode() const
+USMGraphNode_StateNodeBase* USMGraphNode_TransitionEdge::GetToState() const
 {
 	if (Pins.Num() > 1 && Pins[1]->LinkedTo.Num() > 0)
 	{
@@ -401,6 +469,30 @@ bool USMGraphNode_TransitionEdge::ShouldRunParallel() const
 	return false;
 }
 
+FLinearColor USMGraphNode_TransitionEdge::GetBackgroundColor() const
+{
+	const FLinearColor BaseColor = Super::GetBackgroundColor();
+	
+	const USMEditorSettings* Settings = FSMBlueprintEditorUtils::GetEditorSettings();
+	if (Settings->bDisplayTransitionEvaluation)
+	{
+		if (const FSMTransition* DebugNode = (FSMTransition*)GetDebugNode())
+		{
+			if (DebugNode->bIsEvaluating || bWasEvaluating)
+			{
+				const float TimeToFade = 0.7f;
+				const float DebugTime = GetDebugTime();
+				if (DebugTime < TimeToFade)
+				{
+					return FLinearColor::LerpUsingHSV(Settings->EvaluatingTransitionColor, BaseColor, DebugTime / TimeToFade);
+				}
+			}
+		}
+	}
+
+	return BaseColor;
+}
+
 FLinearColor USMGraphNode_TransitionEdge::GetActiveBackgroundColor() const
 {
 	return FSMBlueprintEditorUtils::GetEditorSettings()->ActiveTransitionColor;
@@ -412,20 +504,35 @@ void USMGraphNode_TransitionEdge::SetNodeClass(UClass* Class)
 	Super::SetNodeClass(Class);
 }
 
+float USMGraphNode_TransitionEdge::GetMaxDebugTime() const
+{
+	return FSMBlueprintEditorUtils::GetEditorSettings()->TimeToFadeLastActiveTransition;
+}
+
+void USMGraphNode_TransitionEdge::PreCompile(FSMKismetCompilerContext& CompilerContext)
+{
+	Super::PreCompile(CompilerContext);
+
+	if (!DelegatePropertyName.IsNone())
+	{
+		if (UClass* DelegateClass = GetSelectedDelegateOwnerClass())
+		{
+			if (DelegateClass->FindPropertyByName(DelegatePropertyName) == nullptr)
+			{
+				CompilerContext.MessageLog.Error(TEXT("Delegate property not found for transition @@."), this);
+			}
+		}
+	}
+}
+
 FLinearColor USMGraphNode_TransitionEdge::GetTransitionColor(bool bIsHovered) const
 {
 	const USMEditorSettings* Settings = FSMBlueprintEditorUtils::GetEditorSettings();
 
-	const FLinearColor HoverColor = Settings->TransitionHoverCover;
-
+	const FLinearColor HoverColor = Settings->TransitionHoverColor;
 	const FLinearColor BaseColor = GetBackgroundColor();
 
 	return bIsHovered ? BaseColor * HoverColor : BaseColor;
-}
-
-float USMGraphNode_TransitionEdge::GetMaxDebugTime() const
-{
-	return FSMBlueprintEditorUtils::GetEditorSettings()->TimeToFadeLastActiveTransition;
 }
 
 FLinearColor USMGraphNode_TransitionEdge::Internal_GetBackgroundColor() const
@@ -450,7 +557,7 @@ FLinearColor USMGraphNode_TransitionEdge::Internal_GetBackgroundColor() const
 
 	const bool bHasTransitionTunnel = Graph->HasTransitionTunnel();
 	// Regular transition.
-	if (!bHasTransitionTunnel)
+	if (!bHasTransitionTunnel || !Settings->bEnableTransitionWithEntryLogicColor)
 	{
 		return Settings->TransitionValidColor * ColorModifier;
 	}
@@ -458,7 +565,7 @@ FLinearColor USMGraphNode_TransitionEdge::Internal_GetBackgroundColor() const
 	// Transition with execution logic.
 	if (bHasTransitionTunnel)
 	{
-		return Settings->TransitionWithEntryLogic * ColorModifier;
+		return Settings->TransitionWithEntryLogicColor * ColorModifier;
 	}
 
 	return DefaultColor;
@@ -467,7 +574,7 @@ FLinearColor USMGraphNode_TransitionEdge::Internal_GetBackgroundColor() const
 void USMGraphNode_TransitionEdge::SetDefaultsWhenPlaced()
 {
 	// Auto set parallel mode based on previous state.
-	if (USMGraphNode_StateNodeBase* PreviousState = GetStartNode())
+	if (USMGraphNode_StateNodeBase* PreviousState = GetFromState())
 	{
 		if (USMTransitionInstance* Instance = GetNodeTemplateAs<USMTransitionInstance>())
 		{

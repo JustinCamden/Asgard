@@ -16,13 +16,13 @@ class USMGraphK2Node_ConduitResultNode : public USMGraphK2Node_TransitionResultN
 	FSMConduit ConduitNode;
 
 	//~ Begin UEdGraphNode Interface
-	void AllocateDefaultPins() override;
-	FLinearColor GetNodeTitleColor() const override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	bool IsNodePure() const override { return true; }
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual void AllocateDefaultPins() override;
+	virtual FLinearColor GetNodeTitleColor() const override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual bool IsNodePure() const override { return true; }
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
 	//~ End UEdGraphNode Interface
 
-	FSMNode_Base* GetRunTimeNode() override { return &ConduitNode; }
+	virtual FSMNode_Base* GetRunTimeNode() override { return &ConduitNode; }
 };

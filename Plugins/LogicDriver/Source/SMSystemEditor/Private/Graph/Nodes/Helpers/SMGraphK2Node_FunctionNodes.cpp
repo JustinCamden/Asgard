@@ -2,8 +2,8 @@
 #include "SMGraphK2Node_FunctionNodes.h"
 #include "BlueprintNodeSpawner.h"
 #include "BlueprintActionDatabaseRegistrar.h"
-#include "SMBlueprintEditorUtils.h"
-#include "SMBlueprint.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
+#include "Blueprints/SMBlueprint.h"
 #include "EdGraph/EdGraph.h"
 #include "Graph/SMTransitionGraph.h"
 #include "Graph/SMStateGraph.h"
@@ -12,12 +12,14 @@
 #include "Graph/Nodes/SMGraphNode_StateMachineStateNode.h"
 #include "Graph/Nodes/RootNodes/SMGraphK2Node_TransitionInitializedNode.h"
 #include "Graph/Nodes/RootNodes/SMGraphK2Node_TransitionShutdownNode.h"
+#include "Graph/Nodes/Helpers/SMGraphK2Node_StateReadNodes.h"
 #include "BlueprintDelegateNodeSpawner.h"
 #include "K2Node_StructMemberGet.h"
 #include "K2Node_CallFunction.h"
 #include "K2Node_AddDelegate.h"
 #include "K2Node_RemoveDelegate.h"
 #include "K2Node_DynamicCast.h"
+
 
 #define LOCTEXT_NAMESPACE "SMStateMachineFunctionNode"
 
@@ -478,17 +480,46 @@ void USMGraphK2Node_FunctionNode_TransitionEvent::CustomExpandNode(FSMKismetComp
 	Schema->TryCreateConnection(DelegateOutputPin, DelegateInputPin);
 
 	// Wire correct instance.
-	if(DelegateOwnerInstance == SMDO_Context)
+	if(DelegateOwnerInstance >= SMDO_Context)
 	{
 		if(DelegateOwnerClass == nullptr)
 		{
 			CompilerContext.MessageLog.Error(TEXT("DelegateOwnerClass not assigned for node @@."), this);
 			return;
 		}
-		
-		UFunction* Function = USMInstance::StaticClass()->FindFunctionByName(GET_FUNCTION_NAME_CHECKED(USMInstance, GetContext));
-		UK2Node_CallFunction* ContextFunctionNode = FSMBlueprintEditorUtils::CreateFunctionCall(CompilerContext.ConsolidatedEventGraph, Function);
 
+		UEdGraphPin* FromPin = nullptr;
+		
+		if (DelegateOwnerInstance == SMDO_Context)
+		{
+			UFunction* Function = Function = USMInstance::StaticClass()->FindFunctionByName(GET_FUNCTION_NAME_CHECKED(USMInstance, GetContext));
+			UK2Node_CallFunction* ContextFunctionNode = FSMBlueprintEditorUtils::CreateFunctionCall(CompilerContext.ConsolidatedEventGraph, Function);
+			FromPin = ContextFunctionNode->GetReturnValuePin();
+		}
+		else if (DelegateOwnerInstance == SMDO_PreviousState)
+		{
+			USMGraphK2Node_StateReadNode_GetNodeInstance* NodeInstance = CompilerContext.ConsolidatedEventGraph->CreateIntermediateNode<USMGraphK2Node_StateReadNode_GetNodeInstance>();
+			NodeInstance->ContainerOwnerGuid = RuntimeNodeContainer->ContainerOwnerGuid;
+			NodeInstance->RuntimeNodeGuid = RuntimeNodeContainer->GetRunTimeNodeChecked()->GetNodeGuid();
+			NodeInstance->AllocatePinsForType(TransitionClass);
+
+			UFunction* Function = Function = USMTransitionInstance::StaticClass()->FindFunctionByName(GET_FUNCTION_NAME_CHECKED(USMTransitionInstance, GetPreviousStateInstance));
+			UK2Node_CallFunction* PreviousTransitionNode = FSMBlueprintEditorUtils::CreateFunctionCall(CompilerContext.ConsolidatedEventGraph, Function);
+
+			const FString SelfPinName = "Self";
+			UEdGraphPin* SelfPin = PreviousTransitionNode->FindPinChecked(SelfPinName, EEdGraphPinDirection::EGPD_Input);
+
+			Schema->TryCreateConnection(NodeInstance->GetOutputPin(), SelfPin);
+			
+			FromPin = PreviousTransitionNode->GetReturnValuePin();
+		}
+
+		if (!ensureAlways(FromPin))
+		{
+			CompilerContext.MessageLog.Error(TEXT("Could not find FromPin while expanding auto-bound transition @@"), this);
+			return;
+		}
+		
 		UK2Node_DynamicCast* CastNode = CompilerContext.SpawnIntermediateNode<UK2Node_DynamicCast>(this, CompilerContext.ConsolidatedEventGraph);
 
 		UClass* Class = FSMBlueprintEditorUtils::TryGetFullyGeneratedClass(DelegateOwnerClass);  // 4.25 won't cast the skeleton class correctly during a play-in-editor session.
@@ -504,7 +535,7 @@ void USMGraphK2Node_FunctionNode_TransitionEvent::CustomExpandNode(FSMKismetComp
 		}
 
 		// Context to Cast Source.
-		if(!Schema->TryCreateConnection(ContextFunctionNode->GetReturnValuePin(), CastNode->GetCastSourcePin()))
+		if(!Schema->TryCreateConnection(FromPin, CastNode->GetCastSourcePin()))
 		{
 			CompilerContext.MessageLog.Error(TEXT("Could not cast to DelegateOwnerClass @@."), this);
 			return;

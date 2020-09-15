@@ -15,18 +15,18 @@ public:
 	void InitSMBlueprintEditor(const EToolkitMode::Type Mode, const TSharedPtr< IToolkitHost >& InitToolkitHost, USMBlueprint* Blueprint);
 
 	//  IToolkit interface
-	FName GetToolkitFName() const override;
-	FText GetBaseToolkitName() const override;
-	FText GetToolkitName() const override;
-	FText GetToolkitToolTipText() const override;
-	FLinearColor GetWorldCentricTabColorScale() const override;
-	FString GetWorldCentricTabPrefix() const override;
-	FString GetDocumentationLink() const override;
+	virtual FName GetToolkitFName() const override;
+	virtual FText GetBaseToolkitName() const override;
+	virtual FText GetToolkitName() const override;
+	virtual FText GetToolkitToolTipText() const override;
+	virtual FLinearColor GetWorldCentricTabColorScale() const override;
+	virtual FString GetWorldCentricTabPrefix() const override;
+	virtual FString GetDocumentationLink() const override;
 	// ~ IToolkit interface
 
 	// FBlueprintEditor
-	void CreateDefaultCommands() override;
-	void RefreshEditors(ERefreshBlueprintEditorReason::Type Reason /** = ERefreshBlueprintEditorReason::UnknownReason */) override;
+	virtual void CreateDefaultCommands() override;
+	virtual void RefreshEditors(ERefreshBlueprintEditorReason::Type Reason /** = ERefreshBlueprintEditorReason::UnknownReason */) override;
 	// ~FBlueprintEditor
 
 	void CloseInvalidTabs();
@@ -35,14 +35,16 @@ public:
 	
 	/** Set by property node. This isn't guaranteed to be valid unless used in a selected property command. */
 	TWeakObjectPtr<class USMGraphK2Node_PropertyNode_Base> SelectedPropertyNode;
-
+	/** Set when right clicking on a node. */
+	TWeakObjectPtr<UEdGraphNode> SelectedNodeForContext;
+	
 	DECLARE_MULTICAST_DELEGATE_TwoParams(FOnCreateGraphEditorCommands, FSMBlueprintEditor*, TSharedPtr<FUICommandList>);
 	/** Event fired when a graph in a state machine blueprint is renamed. */
 	static FOnCreateGraphEditorCommands OnCreateGraphEditorCommandsEvent;
 protected:
 
 	// FEditorUndoClient
-	void PostUndo(bool bSuccess) override;
+	virtual void PostUndo(bool bSuccess) override;
 	// ~FEditorUndoClient
 
 	/** Extend menu */
@@ -53,26 +55,29 @@ protected:
 
 	void BindCommands();
 
+	/** When a debug object was set for the blueprint being edited. */
+	void OnDebugObjectSet(UObject* Object);
+
+	/** Find all nodes for the blueprint and reset their debug state. */
+	void ResetBlueprintDebugStates();
+	
 	/** FBlueprintEditor interface */
-	void OnActiveTabChanged(TSharedPtr<SDockTab> PreviouslyActive, TSharedPtr<SDockTab> NewlyActivated) override;
-	void OnSelectedNodesChangedImpl(const TSet<class UObject*>& NewSelection) override;
-	void OnCreateGraphEditorCommands(TSharedPtr<FUICommandList> GraphEditorCommandsList) override;
+	virtual void OnActiveTabChanged(TSharedPtr<SDockTab> PreviouslyActive, TSharedPtr<SDockTab> NewlyActivated) override;
+	virtual void OnSelectedNodesChangedImpl(const TSet<class UObject*>& NewSelection) override;
+	virtual void OnCreateGraphEditorCommands(TSharedPtr<FUICommandList> GraphEditorCommandsList) override;
 	/** ~FBlueprintEditor interface */
-
-	void GoToGraph();
-	bool CanGoToGraph() const;
-
-	void GoToNodeBlueprint();
-	bool CanGoToNodeBlueprint() const;
 	
 	/** A self transition for the same state. */
 	void CreateSingleNodeTransition();
 	bool CanCreateSingleNodeTransition() const;
 
-	/** Collapse selected nodes to a new nested state machine. */
 	void CollapseNodesToStateMachine();
 	bool CanCollapseNodesToStateMachine() const;
 
+	void CutCombineStates();
+	void CopyCombineStates();
+	bool CanCutOrCopyCombineStates() const;
+	
 	void ConvertStateMachineToReference();
 	bool CanConvertStateMachineToReference() const;
 
@@ -103,6 +108,15 @@ protected:
 	void ReplaceWithConduit();
 	bool CanReplaceWithConduit() const;
 
+	void GoToGraph();
+	bool CanGoToGraph() const;
+
+	void GoToNodeBlueprint();
+	bool CanGoToNodeBlueprint() const;
+	
+	void GoToPropertyBlueprint();
+	bool CanGoToPropertyBlueprint() const;
+	
 	void GoToPropertyGraph();
 	bool CanGoToPropertyGraph() const;
 
@@ -121,8 +135,14 @@ private:
 	/** The command list for this editor */
 	TSharedPtr<FUICommandList> GraphEditorCommands;
 
-	// selected state machine graph node 
+	/** Selected state machine graph node */
 	TWeakObjectPtr<class USMGraphK2Node_Base> SelectedStateMachineNode;
+
+	/** The currently loaded blueprint. */
+	TWeakObjectPtr<UBlueprint> LoadedBlueprint;
+
+	/** When the user sets a debug object. */
+	FDelegateHandle OnDebugObjectSetHandle;
 };
 
 
@@ -133,8 +153,8 @@ public:
 	virtual ~FSMNodeBlueprintEditor();
 
 	// IToolkit interface
-	void OnBlueprintChangedImpl(UBlueprint* InBlueprint, bool bIsJustBeingCompiled) override;
-	FText GetBaseToolkitName() const override;
-	FString GetDocumentationLink() const override;
+	virtual void OnBlueprintChangedImpl(UBlueprint* InBlueprint, bool bIsJustBeingCompiled) override;
+	virtual FText GetBaseToolkitName() const override;
+	virtual FString GetDocumentationLink() const override;
 	// ~IToolkit interface
 };

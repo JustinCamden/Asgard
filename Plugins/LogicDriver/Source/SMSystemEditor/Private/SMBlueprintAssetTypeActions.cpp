@@ -1,10 +1,10 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "SMBlueprintAssetTypeActions.h"
 #include "SMBlueprintEditor.h"
-#include "SMBlueprint.h"
+#include "Blueprints/SMBlueprint.h"
 #include "SMInstance.h"
 #include "SMBlueprintFactory.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "Kismet2/KismetEditorUtilities.h"
 
 #define LOCTEXT_NAMESPACE "SMBlueprintAssetTypeActions"

@@ -5,8 +5,6 @@
 
 #define PLUGIN_NAME "SMSystem"
 
-DECLARE_LOG_CATEGORY_EXTERN(LogLogicDriver, Log, All);
-
 /**
  * The public interface to this module
  */

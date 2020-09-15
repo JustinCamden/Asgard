@@ -5,8 +5,8 @@
 #include "Graph/SMTransitionGraph.h"
 #include "BlueprintNodeSpawner.h"
 #include "BlueprintActionDatabaseRegistrar.h"
-#include "SMBlueprintEditorUtils.h"
-#include "SMBlueprint.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
+#include "Blueprints/SMBlueprint.h"
 
 #define LOCTEXT_NAMESPACE "SMTransitionPostEvaluateNode"
 

@@ -57,25 +57,31 @@ public:
 	bool bGenerateTemplateOnNodePlacement;
 	
 	//~ Begin UEdGraphNode Interface
-	void PostLoad() override;
-	void DestroyNode() override;
-	void PostPasteNode() override;
-	void PostEditUndo() override;
-	void PostPlacedNewNode() override;
-	void OnRenameNode(const FString& NewName) override;
-	UObject* GetJumpTargetForDoubleClick() const override;
-	bool CanJumpToDefinition() const override;
-	void JumpToDefinition() const override;
-	bool CanCreateUnderSpecifiedSchema(const UEdGraphSchema* Schema) const override;
-	void ReconstructNode() override;
-	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	void ValidateNodeDuringCompilation(FCompilerResultsLog& MessageLog) const override;
+	virtual void DestroyNode() override;
+	virtual void PostPasteNode() override;
+	virtual void PostEditUndo() override;
+	virtual void PostPlacedNewNode() override;
+	virtual void OnRenameNode(const FString& NewName) override;
+	virtual UObject* GetJumpTargetForDoubleClick() const override;
+	virtual bool CanJumpToDefinition() const override;
+	virtual void JumpToDefinition() const override;
+	virtual bool CanCreateUnderSpecifiedSchema(const UEdGraphSchema* Schema) const override;
+	virtual void ReconstructNode() override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void ValidateNodeDuringCompilation(FCompilerResultsLog& MessageLog) const override;
 	//~ End UEdGraphNode Interface
 	
 	/** Called during kismet pre-compile before the bound graph is copied to the consolidated event graph. */
 	virtual void PreCompile(FSMKismetCompilerContext& CompilerContext);
+	
 	/** Called during kismet compile after this node has been cloned. */
 	virtual void OnCompile(FSMKismetCompilerContext& CompilerContext);
+
+	/** Resets the local and node debug state if valid. */
+	virtual void ResetDebugState();
+	
+	/** Called from the slate node when it is constructed. */
+	virtual void OnWidgetConstruct();
 	
 	/** So we can pass time ticks for specific node appearance behavior. */
 	virtual void UpdateTime(float DeltaTime);
@@ -102,6 +108,7 @@ public:
 	/** Transfer the template to the transient package. */
 	virtual void DestroyTemplate();
 
+	/** Destroys all graph property graphs and empty all containers. */
 	void DestroyAllPropertyGraphs();
 	
 	/** Place default nodes when a class is selected. */
@@ -114,7 +121,8 @@ public:
 	/** Checks if the node template is user created or system supplied. System supplied templates don't get stored on the CDO. */
 	bool IsUsingDefaultNodeClass() const { return GetNodeClass() == GetDefaultNodeClass(); }
 	USMNodeInstance* GetNodeTemplate() const { return NodeInstanceTemplate; }
-
+	USMNodeInstance* GetNodeTemplateFromGuid(const FGuid& Guid) const;
+	
 	template<typename T>
 	T* GetNodeTemplateAs(bool bCheck = false) const
 	{
@@ -133,9 +141,26 @@ public:
 	 * It will always re-sync the K2 property nodes with their containers.
 	 */
 	void CreateGraphPropertyGraphs(bool bGenerateNewGuids = false);
+
+	/**
+	 * Create graph properties for a specific template.
+	 *
+	 * @param Template the template to create properties for.
+	 * @param bGenerateNewGuids will either create new guids for struct properties or re-sync exposed properties.
+	 * @param LiveGuidsInOut all active guids. Will not reset set.
+	 * @param bResetNonVariableGuids resets the guid of pure graph properties by setting the template guid.
+	 *
+	 * @return true if there has been a change.
+	 */
+	bool CreateGraphPropertyGraphsForTemplate(USMNodeInstance* Template, bool bGenerateNewGuids, TSet<FGuid>& LiveGuidsInOut, bool bResetNonVariableGuids = false);
 	UEdGraph* GetGraphPropertyGraph(const FGuid& Guid) const;
 	USMGraphK2Node_PropertyNode_Base* GetGraphPropertyNode(const FGuid& Guid) const;
-	USMGraphK2Node_PropertyNode_Base* GetGraphPropertyNode(const FName& VariableName) const;
+	/** Search for a property node by variable name.
+	 *
+	 * @param VariableName the name of the variable.
+	 * @param TemplateMatch a template who's guid will be checked against property template guid.
+	 */
+	USMGraphK2Node_PropertyNode_Base* GetGraphPropertyNode(const FName& VariableName, USMNodeInstance* TemplateMatch = nullptr) const;
 	const TMap<FGuid, UEdGraph*>& GetAllPropertyGraphs() const { return GraphPropertyGraphs; }
 	const TMap<FGuid, USMGraphK2Node_PropertyNode_Base*>& GetAllPropertyGraphNodes() const { return GraphPropertyNodes; }
 	/** Look for all property nodes that should be exposed. */
@@ -192,23 +217,27 @@ public:
 
 	virtual FName GetFriendlyNodeName() const { return "Node"; }
 
-	/** Configure outdated versions during pre-compile and load. */
-	void ConvertToCurrentVersion(bool bOnlyOnLoad = true, bool bResetVersion = false);
+	/** Configure outdated versions. Currently called from the editor module on load and from pre-compile. */
+	bool ConvertToCurrentVersion(bool bOnlyOnLoad = true);
 	/** Sets the version field to the current version. No additional changes are made. */
-	void SetToCurrentVersion();
+	bool SetToCurrentVersion();
 	/** FOR TESTING: Force set to a specific version. */
 	void ForceSetVersion(int32 NewVersion);
 	/** Brings in old values previously defined in the node and sets them on the template. */
 	virtual void ImportDeprecatedProperties() {}
 protected:
 	virtual FLinearColor Internal_GetBackgroundColor() const;
-	const FLinearColor* GetCustomBackgroundColor() const;
+	/** Return the custom color from a specific node instance.
+	 *
+	 * @param NodeInstance If null then the default NodeInstanceTemplate will be used.
+	 */
+	const FLinearColor* GetCustomBackgroundColor(USMNodeInstance* NodeInstance = nullptr) const;
 
 	void RemovePropertyGraph(USMPropertyGraph* PropertyGraph, bool RemoveFromMaps);
 	void HandlePropertyGraphArrayRemoval(TArray<FSMGraphProperty_Base*>& GraphProperties, TArray<FSMGraphProperty>& TempGraphProperties,
-		FProperty* TargetProperty, int32 RemovalIndex, int32 ArraySize, FSMGraphProperty* OverrideGraphProperty);
+		FProperty* TargetProperty, int32 RemovalIndex, int32 ArraySize, FSMGraphProperty* OverrideGraphProperty, USMNodeInstance* Template);
 	void HandlePropertyGraphArrayInsertion(TArray<FSMGraphProperty_Base*>& GraphProperties, TArray<FSMGraphProperty>& TempGraphProperties,
-		FProperty* TargetProperty, int32 InsertionIndex, int32 ArraySize, FSMGraphProperty* OverrideGraphProperty);
+		FProperty* TargetProperty, int32 InsertionIndex, int32 ArraySize, FSMGraphProperty* OverrideGraphProperty, USMNodeInstance* Template);
 protected:
 	UPROPERTY()
 	TArray<FSMGraphNodeLog> CollectedLogs;
@@ -226,6 +255,13 @@ protected:
 	UPROPERTY()
 	TMap<FGuid, USMGraphK2Node_PropertyNode_Base*> GraphPropertyNodes;
 
+	/** The template each graph property points to. Generally the NodeInstanceTemplate but if a state uses the state stack it will vary. */
+	UPROPERTY()
+	TMap<FGuid, USMNodeInstance*> GraphPropertyTemplates;
+
+	/** Templates mapped to their ordered properties. */
+	TMap<USMNodeInstance*, TArray<USMGraphK2Node_PropertyNode_Base*>> TemplatesToProperties;
+	
 	UPROPERTY(Transient)
 	FSlateBrush CachedBrush;
 
@@ -241,18 +277,31 @@ protected:
 	/** Resets on active change. */
 	float DebugTotalTime;
 	float MaxTimeToShowDebug;
-	bool bIsDebugActive;
-	bool bWasDebugActive;
+	
+	uint32 bIsDebugActive:	1;
+	uint32 bWasDebugActive: 1;
 
 	/** Defaults to true and property graphs are reconstructed when a property changes on the node. */
-	bool bCreatePropertyGraphsOnPropertyChange;
+	uint32 bCreatePropertyGraphsOnPropertyChange: 1;
+	
+	uint32 bIsPrecompiling: 1;
+	uint32 bJustPasted:		1;
 
-	bool bJustPasted;
+public:
+	/** Member flag for forcing guid regeneration. */
+	uint32 bRequiresGuidRegeneration:	1;
+	
+	/** True iff bRequiresGuidRegeneration and loaded version wrong. */
+	uint32 bNeedsStateStackConversion:	1;
 
+	/** Testing flag for forcing old guid generation WITHOUT template support. */
+	uint32 bTEST_ForceNoTemplateGuid:	1;
+	
 private:
 	// Graph node properties deprecated in favor of being stored on the node template.
-#define TEMPLATE_PROPERTY_VERSION 1
-#define CURRENT_VERSION TEMPLATE_PROPERTY_VERSION
+#define TEMPLATE_PROPERTY_VERSION	1
+#define STATESTACK_VERSION			2
+#define CURRENT_VERSION STATESTACK_VERSION
 
 	/** The current loaded version. Once saved it should be the highest version available. */
 	UPROPERTY()

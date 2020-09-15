@@ -5,7 +5,10 @@
 #include "ISMStateMachineInterface.h"
 #include "SMNodeRules.h"
 #include "Engine/Texture2D.h"
+#include "SMLogging.h"
 #include "SMNodeInstance.generated.h"
+
+DECLARE_DWORD_ACCUMULATOR_STAT_EXTERN(TEXT("SMNodeInstances"), STAT_NodeInstances, STATGROUP_LogicDriver, SMSYSTEM_API);
 
 /**
  * This information will be viewable when selecting new nodes or hovering over nodes.
@@ -42,13 +45,14 @@ public:
 	USMNodeInstance();
 	
 	// UObject
-	UWorld* GetWorld() const override;
+	virtual UWorld* GetWorld() const override;
+	virtual void BeginDestroy() override;
 	// ~UObject
 
 	// ISMInstanceInterface
 	/** The object which this node is running for. Determined by the owning state machine. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
-	UObject* GetContext() const override;
+	virtual UObject* GetContext() const override;
 	// ~ISMInstanceInterface
 
 	/** A construction script that runs when this node is placed in a graph or instantiated during run-time. */
@@ -116,6 +120,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
 	void EvaluateGraphProperties();
 
+	/** Retrieve the template guid. The template guid cannot be modified at runtime. */
+	const FGuid& GetTemplateGuid() const { return TemplateGuid; }
+	
 	/**
 	 * Properties marked as public will be exposed on this node as a graph.
 	 * 
@@ -128,7 +135,7 @@ public:
 	bool bAutoEvalExposedProperties;
 	
 	/** Override graph property values. Match the variable name with the variable you want to override. Property must be instance editable. */
-	UPROPERTY(EditDefaultsOnly, AdvancedDisplay, Category = "Graph Properties", meta = (InstancedTemplate))
+	UPROPERTY(EditDefaultsOnly, AdvancedDisplay, Category = "Graph Properties", meta = (InstancedTemplate, HideOnNode))
 	TArray<FSMGraphProperty> ExposedPropertyOverrides;
 	
 	/*
@@ -137,7 +144,7 @@ public:
 	 * a good way of finding the specific changes that are available here.
 	 */
 #if WITH_EDITOR
-	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	bool WasArrayPropertyModified(const FName& PropertyName) const;
 	void ResetArrayCheck();
 	FName ArrayPropertyChanged;
@@ -154,15 +161,15 @@ protected:
 	/**
 	 * The icon to use when displaying this node.
 	 * This exists in run-time as well in case this image is needed for purposes outside of editor use. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Display", meta = (DisplayPriority = 1))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Display", meta = (DisplayPriority = 1, NodeBaseOnly))
 	UTexture2D* NodeIcon;
 
 	/** The size of the node icon. Leave 0,0 to auto size. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Display", meta = (DisplayPriority = 2))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Display", meta = (DisplayPriority = 2, NodeBaseOnly))
 	FVector2D NodeIconSize;
 
 	/** The tint color to apply to the node icon. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Display", meta = (DisplayPriority = 3))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Display", meta = (DisplayPriority = 3, NodeBaseOnly))
 	FLinearColor NodeIconTintColor;
 	
 #if WITH_EDITORONLY_DATA
@@ -175,13 +182,15 @@ public:
 	/** The default name which should be used. */
 	FString GetNodeDisplayName() const;
 
+	/** Sets the template guid. Editor use only. */
+	void SetTemplateGuid(const FGuid& NewTemplateGuid) { TemplateGuid = NewTemplateGuid; }
 protected:
 	/** Describe the node. This provides information to the context menu and to tooltips. */
 	UPROPERTY(EditDefaultsOnly, Category = "General", meta = (InstancedTemplate, ShowOnlyInnerProperties))
 	FSMNodeDescription NodeDescription;
 
 	/** Override editor default icon with the custom icon chosen. */
-	UPROPERTY(EditDefaultsOnly, Category = "Display", meta = (DisplayPriority = 0))
+	UPROPERTY(EditDefaultsOnly, Category = "Display", meta = (DisplayPriority = 0, NodeBaseOnly))
 	bool bDisplayCustomIcon;
 
 	// NodeIcon
@@ -199,4 +208,8 @@ protected:
 private:
 	/** The owning node in the state machine instance. */
 	FSMNode_Base* OwningNode;
+
+	/** Assigned from the editor and used in tracking specific templates. */
+	UPROPERTY()
+	FGuid TemplateGuid;
 };

@@ -1,10 +1,10 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "SMTextPropertyGraph.h"
 #include "GraphEditAction.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "Text/SMTextParsing.h"
 #include "K2Node_FormatText.h"
-#include "SMExtendedEditorUtils.h"
+#include "Utilities/SMExtendedEditorUtils.h"
 #include "K2Node_VariableGet.h"
 #include "Nodes/PropertyNodes/SMGraphK2Node_TextPropertyNode.h"
 #include "ScopedTransaction.h"
@@ -154,6 +154,18 @@ void USMTextPropertyGraph::SetUsingGraphToEdit(bool bValue)
 	{
 		SetTextEditMode(false);
 	}
+}
+
+void USMTextPropertyGraph::OnGraphManuallyCloned(USMPropertyGraph* OldGraph)
+{
+	PruneDisconnectedNodes();
+	FindAndSetFormatTextNode();
+	USMTextPropertyGraph* OldTextGraph = CastChecked<USMTextPropertyGraph>(OldGraph);
+	PlainTextBody = OldTextGraph->PlainTextBody;
+	RichTextBody = OldTextGraph->RichTextBody;
+	StoredFunctions = OldTextGraph->StoredFunctions;
+	StoredProperties = OldTextGraph->StoredProperties;
+	bEditable = OldGraph->bEditable;
 }
 
 void USMTextPropertyGraph::SetNewText(const FText& PlainText)
@@ -394,5 +406,42 @@ void USMTextPropertyGraph::SetFormatTextNodeText(const FText& NewText)
 
 			EditableTextProperty->SetText(TextIndex, FText::ChangeKey(NewNamespace, NewKey, NewText));
 		}
+	}
+}
+
+void USMTextPropertyGraph::FindAndSetFormatTextNode()
+{
+	// The first connected node to the result pin should be the format text node.
+	UEdGraphPin** FormatTextPin = ResultNode->GetResultPinChecked()->LinkedTo.FindByPredicate([&](const UEdGraphPin* GraphPin)
+	{
+		return GraphPin->GetOwningNode()->IsA<UK2Node_FormatText>();
+	});
+
+	if (FormatTextPin)
+	{
+		FormatTextNode = Cast<UK2Node_FormatText>((*FormatTextPin)->GetOwningNode());
+		return;
+	}
+
+	// Look back through connected nodes.
+	TSet<UEdGraphNode*> ConnectedNodes;
+	FSMBlueprintEditorUtils::GetAllConnectedNodes(ResultNode, EEdGraphPinDirection::EGPD_Input, ConnectedNodes);
+
+	for (UEdGraphNode* ConnectedNode : ConnectedNodes)
+	{
+		if (UK2Node_FormatText* FormatNode = Cast<UK2Node_FormatText>(ConnectedNode))
+		{
+			FormatTextNode = FormatNode;
+			return;
+		}
+	}
+
+	// Last resort, take any node.
+	TArray<UK2Node_FormatText*> AllNodes;
+	FSMBlueprintEditorUtils::GetAllNodesOfClassNested<UK2Node_FormatText>(this, AllNodes);
+
+	if (AllNodes.Num() > 0)
+	{
+		FormatTextNode = AllNodes[0];
 	}
 }

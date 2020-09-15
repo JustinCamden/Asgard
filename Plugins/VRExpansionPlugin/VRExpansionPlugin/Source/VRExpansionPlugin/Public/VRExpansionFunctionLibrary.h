@@ -43,10 +43,10 @@ class VREXPANSIONPLUGIN_API UVRExpansionFunctionLibrary : public UBlueprintFunct
 public:
 
 	// Applies a delta rotation around a pivot point, if bUseOriginalYawOnly is true then it only takes the original Yaw into account (characters)
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true"))
 		static void SetObjectsIgnoreCollision(UPrimitiveComponent* Prim1 = nullptr, FName OptionalBoneName1 = NAME_None, UPrimitiveComponent* Prim2 = nullptr, FName OptionalBoneName2 = NAME_None, bool bIgnoreCollision = true);
 
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true", DisplayName = "GetHandFromMotionSourceName"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHandFromMotionSourceName"))
 	static bool GetHandFromMotionSourceName(FName MotionSource, EControllerHand& Hand)
 	{
 		Hand = EControllerHand::Left;
@@ -59,7 +59,7 @@ public:
 	}
 
 	// Gets the unwound yaw of the HMD
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true", DisplayName = "GetHMDPureYaw"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHMDPureYaw"))
 	static FRotator GetHMDPureYaw(FRotator HMDRotation);
 
 	inline static FRotator GetHMDPureYaw_I(FRotator HMDRotation)
@@ -86,7 +86,7 @@ public:
 	}
 
 	// Applies a delta rotation around a pivot point, if bUseOriginalYawOnly is true then it only takes the original Yaw into account (characters)
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true", DisplayName = "RotateAroundPivot"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "RotateAroundPivot"))
 	static void RotateAroundPivot(FRotator RotationDelta, FVector OriginalLocation, FRotator OriginalRotation, FVector PivotPoint, FVector & NewLocation, FRotator & NewRotation,bool bUseOriginalYawOnly = true)
 	{		
 		if (bUseOriginalYawOnly)
@@ -118,24 +118,31 @@ public:
 		}
 	}
 
+	// Returns a delta rotation to have Vec1 point towards Vec2, assumes that the v
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "FindBetween"))
+		static FRotator BPQuat_FindBetween(FVector Vec1, FVector Vec2)
+	{
+		return FQuat::FindBetween(Vec1, Vec2).Rotator();
+	}
+
 	// Gets whether an HMD device is connected
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true", DisplayName = "GetIsHMDConnected"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDConnected"))
 	static bool GetIsHMDConnected();
 
 	// Gets whether an HMD device is connected
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true", DisplayName = "GetIsHMDWorn"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDWorn"))
 	static EBPHMDWornState GetIsHMDWorn();
 
 	// Gets whether an HMD device is connected
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true", DisplayName = "GetHMDType"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHMDType"))
 	static EBPHMDDeviceType GetHMDType();
 
 	// Gets whether the game is running in VRPreview or is a non editor build game (returns true for either).
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true", DisplayName = "IsInVREditorPreviewOrGame"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "IsInVREditorPreviewOrGame"))
 	static bool IsInVREditorPreviewOrGame();
 
 	// Gets whether the game is running in VRPreview
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true", DisplayName = "IsInVREditorPreview"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "IsInVREditorPreview"))
 	static bool IsInVREditorPreview();
 
 	/**
@@ -152,24 +159,24 @@ public:
 	static void NonAuthorityMinimumAreaRectangle(UObject* WorldContextObject, const TArray<FVector>& InVerts, const FVector& SampleSurfaceNormal, FVector& OutRectCenter, FRotator& OutRectRotation, float& OutSideLengthX, float& OutSideLengthY, bool bDebugDraw = false);
 
 	// A Rolling average low pass filter
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true", DisplayName = "LowPassFilter_RollingAverage"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "LowPassFilter_RollingAverage"))
 	static void LowPassFilter_RollingAverage(FVector lastAverage, FVector newSample, FVector & newAverage, int32 numSamples = 10);
 
 	// A exponential low pass filter
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true", DisplayName = "LowPassFilter_Exponential"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "LowPassFilter_Exponential"))
 	static void LowPassFilter_Exponential(FVector lastAverage, FVector newSample, FVector & newAverage, float sampleFactor = 0.25f);
 
 	// Gets whether an HMD device is connected
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bAutoIgnoreActor = "true", DisplayName = "GetIsActorMovable"))
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsActorMovable"))
 	static bool GetIsActorMovable(AActor * ActorToCheck);
 
 	// Gets if an actors root component contains a grip slot within range
-	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (bAutoIgnoreActor = "true", DisplayName = "GetGripSlotInRangeByTypeName"))
-	static void GetGripSlotInRangeByTypeName(FName SlotType, AActor * Actor, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform);
+	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (bIgnoreSelf = "true", DisplayName = "GetGripSlotInRangeByTypeName"))
+	static void GetGripSlotInRangeByTypeName(FName SlotType, AActor * Actor, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName);
 
 	// Gets if an actors root component contains a grip slot within range
-	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (bAutoIgnoreActor = "true", DisplayName = "GetGripSlotInRangeByTypeName_Component"))
-	static void GetGripSlotInRangeByTypeName_Component(FName SlotType, UPrimitiveComponent * Component, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform);
+	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (bIgnoreSelf = "true", DisplayName = "GetGripSlotInRangeByTypeName_Component"))
+	static void GetGripSlotInRangeByTypeName_Component(FName SlotType, UPrimitiveComponent * Component, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName);
 
 	/* Returns true if the values are equal (A == B) */
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "Equal VR Grip", CompactNodeTitle = "==", Keywords = "== equal"), Category = "VRExpansionFunctions")
@@ -315,6 +322,7 @@ public:
 
 			SplineMeshComponent->SetStartAndEnd(StartLoc, StartTangent, EndLoc, EndTangent, true);
 		}
+
 	}
 
 	/**

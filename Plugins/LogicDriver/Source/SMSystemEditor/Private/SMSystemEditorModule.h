@@ -15,15 +15,15 @@ class FSMSystemEditorModule : public ISMSystemEditorModule
 {
 public:
 	/** IModuleInterface implementation */
-	void StartupModule() override;
-	void ShutdownModule() override;
+	virtual void StartupModule() override;
+	virtual void ShutdownModule() override;
 
 	/** Gets the extensibility managers for outside entities to extend this editor's menus and toolbars */
-	TSharedPtr<FExtensibilityManager> GetMenuExtensibilityManager() const override { return MenuExtensibilityManager; }
-	TSharedPtr<FExtensibilityManager> GetToolBarExtensibilityManager() const override { return ToolBarExtensibilityManager; }
+	virtual TSharedPtr<FExtensibilityManager> GetMenuExtensibilityManager() const override { return MenuExtensibilityManager; }
+	virtual TSharedPtr<FExtensibilityManager> GetToolBarExtensibilityManager() const override { return ToolBarExtensibilityManager; }
 
 	/** If the user has pressed play in editor. */
-	bool IsPlayingInEditor() const override { return bPlayingInEditor; }
+	virtual bool IsPlayingInEditor() const override { return bPlayingInEditor; }
 private:
 	void RegisterAssetTypeAction(IAssetTools& AssetTools, TSharedRef<IAssetTypeActions> Action);
 	static TSharedPtr<FKismetCompilerContext> GetCompilerForStateMachineBP(UBlueprint* BP, FCompilerResultsLog& InMessageLog, const FKismetCompilerOptions& InCompileOptions);
@@ -33,6 +33,10 @@ private:
 
 	void BeginPIE(bool bValue);
 	void EndPie(bool bValue);
+
+	void DisplayUpdateNotification();
+	void OnViewNewPatchNotesClicked();
+	void OnDismissUpdateNotificationClicked();
 	
 private:
 	TArray<TSharedPtr<IAssetTypeActions>> CreatedAssetTypeActions;
@@ -50,7 +54,11 @@ private:
 
 	FDelegateHandle BeginPieHandle;
 	FDelegateHandle EndPieHandle;
+	FDelegateHandle FilesLoadedHandle;
 
+	/** Notification popup that the plugin has updated. */
+	TWeakPtr<SNotificationItem> NewVersionNotification;
+	
 	/** If the user has pressed play in editor. */
 	bool bPlayingInEditor = false;
 };

@@ -6,6 +6,13 @@
 #include "SMState.generated.h"
 
 
+#define GRAPH_PROPERTY_EVAL_ON_START			0
+#define GRAPH_PROPERTY_EVAL_ON_UPDATE			1
+#define GRAPH_PROPERTY_EVAL_ON_END				2
+#define GRAPH_PROPERTY_EVAL_ON_INITIALIZE		3
+#define GRAPH_PROPERTY_EVAL_ON_ROOT_SM_START	4
+#define GRAPH_PROPERTY_EVAL_ON_ROOT_SM_STOP		5
+
 struct FSMTransition;
 struct FSMStateInfo;
 
@@ -53,7 +60,7 @@ public:
 	FSMExposedFunctionHandler OnRootStateMachineStoppedGraphEvaluator;
 	
 public:
-	void UpdateReadStates() override;
+	virtual void UpdateReadStates() override;
 	void ResetReadStates();
 
 //#pragma endregion
@@ -62,10 +69,11 @@ public:
 	FSMState_Base();
 
 	// FSMNode_Base
-	void Initialize(UObject* Instance) override;
-	void Reset() override;
-	bool IsNodeInstanceClassCompatible(UClass* NewNodeInstanceClass) const override;
-	UClass* GetDefaultNodeInstanceClass() const override;
+	virtual void Initialize(UObject* Instance) override;
+	virtual void Reset() override;
+	virtual bool IsNodeInstanceClassCompatible(UClass* NewNodeInstanceClass) const override;
+	virtual UClass* GetDefaultNodeInstanceClass() const override;
+	virtual void ExecuteInitializeNodes() override;
 	// ~ FSMNode_Base
 
 	/** The transitions leading out from this state, sorted lowest to highest priority. */
@@ -113,6 +121,9 @@ public:
 
 	/** Easy way to check if this state struct is a conduit. */
 	virtual bool IsConduit() const { return false; }
+
+	/** If this node is an initial entry point. */
+	bool IsRootNode() const { return bIsRootNode; }
 	
 	/** Current time in seconds this state has been active. */
 	float GetActiveTime() const { return TimeInState; }
@@ -186,24 +197,29 @@ public:
 
 	UPROPERTY()
 	FSMExposedFunctionHandler EndStateGraphEvaluator;
-
+	
 //#pragma endregion
 
 public:
 	FSMState();
 
 	// FSMNode_Base
-	void Initialize(UObject* Instance) override;
-	void Reset() override;
+	virtual void Initialize(UObject* Instance) override;
+	virtual void Reset() override;
+	virtual void ExecuteInitializeNodes() override;
+	virtual void ExecuteShutdownNodes() override;
 	// ~ FSMNode_Base
 
 	// FSMState_Base
 
 	/** Begins state execution. */
-	bool StartState() override;
+	virtual bool StartState() override;
 	/** Runs the update execution. */
-	bool UpdateState(float DeltaSeconds) override;
+	virtual bool UpdateState(float DeltaSeconds) override;
 	/** Runs the end state execution. */
-	bool EndState(float DeltaSeconds, const FSMTransition* TransitionToTake = nullptr) override;
+	virtual bool EndState(float DeltaSeconds, const FSMTransition* TransitionToTake = nullptr) override;
+
+	virtual void OnStartedByInstance(USMInstance* Instance) override;
+	virtual void OnStoppedByInstance(USMInstance* Instance) override;
 	// ~FSMState_Base
 };

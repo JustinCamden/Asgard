@@ -17,12 +17,12 @@ class USMBlueprintFactory : public UFactory
 	GENERATED_UCLASS_BODY()
 
 	// UFactory
-	UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context,
-	                          FFeedbackContext* Warn, FName CallingContext) override;
-	UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context,
-	                          FFeedbackContext* Warn) override;
-	bool DoesSupportClass(UClass* Class) override;
-	FString GetDefaultNewAssetName() const override;
+	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context,
+	                                  FFeedbackContext* Warn, FName CallingContext) override;
+	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context,
+	                                  FFeedbackContext* Warn) override;
+	virtual bool DoesSupportClass(UClass* Class) override;
+	virtual FString GetDefaultNewAssetName() const override;
 	// ~UFactory
 
 	static void CreateGraphsForNewBlueprint(USMBlueprint* Blueprint);
@@ -44,13 +44,13 @@ class USMNodeBlueprintFactory : public UFactory
 	GENERATED_UCLASS_BODY()
 
 	// UFactory
-	bool ConfigureProperties() override;
-	UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context,
-	                          FFeedbackContext* Warn, FName CallingContext) override;
-	UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context,
-	                          FFeedbackContext* Warn) override;
-	bool DoesSupportClass(UClass* Class) override;
-	FString GetDefaultNewAssetName() const override;
+	virtual bool ConfigureProperties() override;
+	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context,
+	                                  FFeedbackContext* Warn, FName CallingContext) override;
+	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context,
+	                                  FFeedbackContext* Warn) override;
+	virtual bool DoesSupportClass(UClass* Class) override;
+	virtual FString GetDefaultNewAssetName() const override;
 	// ~UFactory
 
 	static SMSYSTEMEDITOR_API void SetupNewBlueprint(USMNodeBlueprint* Blueprint);

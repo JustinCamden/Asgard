@@ -8,7 +8,7 @@
 #include "EditorStyle.h"
 #include "NodeFactory.h"
 #include "SMBlueprintEditor.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 
 
 SSMTextProperty::SSMTextProperty(): SSMGraphProperty_Base()

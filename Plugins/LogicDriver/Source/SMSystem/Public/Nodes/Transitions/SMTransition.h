@@ -6,6 +6,15 @@
 #include "SMTransition.generated.h"
 
 
+UENUM()
+enum class ESMConditionalEvaluationType : uint8
+{
+	SM_Graph,			// BP Graph eval required
+	SM_NodeInstance,	// Node instance only 
+	SM_AlwaysFalse,		// Never eval graph and never take conditionally
+	SM_AlwaysTrue		// Never eval graph and always take conditionally
+};
+
 /**
  * Transitions determine when an FSM can exit one state and advance to the next.
  */
@@ -20,14 +29,6 @@ public:
 	/** Entry point to when a transition is taken. */
 	UPROPERTY()
 	FSMExposedFunctionHandler TransitionEnteredGraphEvaluator;
-
-	/** Entry point to when a transition is first initialized. */
-	UPROPERTY()
-	TArray<FSMExposedFunctionHandler> TransitionInitializedGraphEvaluators;
-
-	/** Entry point to when a transition is shutdown. */
-	UPROPERTY()
-	TArray<FSMExposedFunctionHandler> TransitionShutdownGraphEvaluators;
 
 	/** Entry point to before a transition evaluates. */
 	UPROPERTY()
@@ -48,6 +49,10 @@ public:
 	/** Set from graph execution when updated by event. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Result, meta = (AlwaysAsPin))
 	bool bCanEnterTransitionFromEvent;
+
+	/** Set internally and from auto bound events. True only during evaluation. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Result, meta = (AlwaysAsPin))
+	bool bIsEvaluating;
 	
 	/** Set from graph execution or configurable from details panel. Must be true for the transition to be evaluated conditionally. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Transition)
@@ -56,6 +61,14 @@ public:
 	/** Allows auto-binded events to evaluate. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Transition)
 	bool bCanEvaluateFromEvent;
+
+	/** Guid to the state this transition is from. Kismet compiler will convert this into a state link. */
+	UPROPERTY()
+	FGuid FromGuid;
+	
+	/** Guid to the state this transition is leading to. Kismet compiler will convert this into a state link. */
+	UPROPERTY()
+	FGuid ToGuid;
 	
 	/**
 	 * This transition will not prevent the next transition in the priority sequence from being evaluated.
@@ -69,24 +82,21 @@ public:
 	 */
 	UPROPERTY()
 	bool bEvalIfNextStateActive;
-	
-	/** Guid to the state this transition is from. Kismet compiler will convert this into a state link. */
-	UPROPERTY()
-	FGuid FromGuid;
-	
-	/** Guid to the state this transition is leading to. Kismet compiler will convert this into a state link. */
-	UPROPERTY()
-	FGuid ToGuid;
-
-	UPROPERTY()
-	bool bAlwaysFalse;
 
 	/** Secondary check state machine will make if a state is evaluating transitions on the same tick as Start State. */
 	UPROPERTY()
 	bool bCanEvalWithStartState;
 	
+	/** The transition can never be taken conditionally or from an event. */
+	UPROPERTY()
+	bool bAlwaysFalse;
+
+	/** The conditional evaluation type which determines the type of evaluation required if any. */
+	UPROPERTY()
+	ESMConditionalEvaluationType ConditionalEvaluationType;
+	
 public:
-	void UpdateReadStates() override;
+	virtual void UpdateReadStates() override;
 
 //#pragma endregion
 
@@ -94,10 +104,12 @@ public:
 	FSMTransition();
 
 	// FSMNode_Base
-	void Initialize(UObject* Instance) override;
-	void Reset() override;
-	bool IsNodeInstanceClassCompatible(UClass* NewNodeInstanceClass) const override;
-	UClass* GetDefaultNodeInstanceClass() const override;
+	virtual void Initialize(UObject* Instance) override;
+	virtual void Reset() override;
+	virtual bool IsNodeInstanceClassCompatible(UClass* NewNodeInstanceClass) const override;
+	virtual UClass* GetDefaultNodeInstanceClass() const override;
+	virtual void ExecuteInitializeNodes() override;
+	virtual void ExecuteShutdownNodes() override;
 	// ~FSMNode_Base
 	
 	/** Will execute any transition tunnel logic. */
@@ -106,6 +118,9 @@ public:
 	/** Execute the graph and return the result. Only determines if this transition passes. */
 	bool DoesTransitionPass();
 
+	/** Checks if this transition has been notified it can pass from an event. */
+	bool CanTransitionFromEvent();
+	
 	/**
 	 * Checks the execution tree in the event of conduits.
 	 * @param Transitions All transitions that pass.
@@ -131,7 +146,14 @@ public:
 	/** Sets the state leading to this transition. This will update the state with this transition. */
 	void SetFromState(FSMState_Base* State);
 	void SetToState(FSMState_Base* State);
-
+	
+#if WITH_EDITORONLY_DATA
+	virtual bool IsDebugActive() const override { return bIsEvaluating ? bIsEvaluating : Super::IsDebugActive(); }
+	virtual bool WasDebugActive() const override { return bWasEvaluating ? bWasEvaluating : Super::WasDebugActive(); }
+	/** Helper to display evaluation color in the editor. */
+	bool bWasEvaluating = false;
+#endif
+	
 	/** Checks to make sure every transition is allowed to evaluate with the start state. */
 	static bool CanEvaluateWithStartState(const TArray<FSMTransition*>& TransitionChain);
 

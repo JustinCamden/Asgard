@@ -11,9 +11,9 @@ class USMGraphK2Node_StateUpdateNode : public USMGraphK2Node_RuntimeNodeReferenc
 	GENERATED_UCLASS_BODY()
 
 	//~ Begin UEdGraphNode Interface
-	void AllocateDefaultPins() override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual void AllocateDefaultPins() override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
 	//~ End UEdGraphNode Interface
 };

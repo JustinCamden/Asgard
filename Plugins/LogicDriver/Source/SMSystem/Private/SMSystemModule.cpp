@@ -1,14 +1,14 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "ISMSystemModule.h"
+#include "SMLogging.h"
 
-
-DEFINE_LOG_CATEGORY(LogLogicDriver)
+DEFINE_LOG_CATEGORY(LogLogicDriver);
 
 class FSMSystemModule : public ISMSystemModule
 {
 	/** IModuleInterface implementation */
-	void StartupModule() override;
-	void ShutdownModule() override;
+	virtual void StartupModule() override;
+	virtual void ShutdownModule() override;
 };
 
 IMPLEMENT_MODULE(FSMSystemModule, SMSystem)
@@ -25,6 +25,3 @@ void FSMSystemModule::ShutdownModule()
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
 }
-
-
-

@@ -11,7 +11,7 @@
 #endif
 
 USMStateInstance_Base::USMStateInstance_Base() : Super(),
-bEvalGraphsOnStart(true), bEvalGraphsOnUpdate(false), bEvalGraphsOnEnd(false), bEvalGraphsOnRootStateMachineStart(false), bEvalGraphsOnRootStateMachineStop(false)
+bEvalGraphsOnStart(true), bEvalGraphsOnUpdate(false), bEvalGraphsOnEnd(false), bEvalGraphsOnInitialize(true), bEvalGraphsOnRootStateMachineStart(false), bEvalGraphsOnRootStateMachineStop(false)
 {
 #if WITH_EDITORONLY_DATA
 	// TODO: Read editor settings.
@@ -20,6 +20,16 @@ bEvalGraphsOnStart(true), bEvalGraphsOnUpdate(false), bEvalGraphsOnEnd(false), b
 	bRegisterWithContextMenu = true;
 	bHideFromContextMenuIfRulesFail = false;
 #endif
+}
+
+bool USMStateInstance_Base::IsInEndState() const
+{
+	if (FSMState_Base* State = (FSMState_Base*)GetOwningNode())
+	{
+		return State->IsInEndState();
+	}
+
+	return false;
 }
 
 void USMStateInstance_Base::GetStateInfo(FSMStateInfo& State) const
@@ -32,16 +42,6 @@ void USMStateInstance_Base::GetStateInfo(FSMStateInfo& State) const
 	{
 		State = FSMStateInfo();
 	}
-}
-
-bool USMStateInstance_Base::IsInEndState() const
-{
-	if (FSMState_Base* State = (FSMState_Base*)GetOwningNode())
-	{
-		return State->IsInEndState();
-	}
-
-	return false;
 }
 
 bool USMStateInstance_Base::IsStateMachine() const
@@ -127,7 +127,7 @@ bool USMStateInstance_Base::GetIncomingTransitions(TArray<USMTransitionInstance*
 
 USMTransitionInstance* USMStateInstance_Base::GetTransitionToTake() const
 {
-	if (FSMState_Base* State = (FSMState_Base*)GetOwningNode())
+	if (FSMState_Base* State = (FSMState_Base*)GetOwningNodeContainer())
 	{
 		if (const FSMTransition* Transition = State->GetTransitionToTake())
 		{
@@ -170,18 +170,23 @@ bool USMStateInstance_Base::SwitchToLinkedState(USMStateInstance_Base* NextState
 	return false;
 }
 
-USMStateInstance_Base* USMStateInstance_Base::GetNextStateByTransitionIndex(int32 Index) const
+USMTransitionInstance* USMStateInstance_Base::GetTransitionByIndex(int32 Index) const
 {
-	USMTransitionInstance* FoundTransition = nullptr;
 	TArray<USMTransitionInstance*> Transitions;
 	if (GetOutgoingTransitions(Transitions, false))
 	{
 		if (Index >= 0 && Index < Transitions.Num())
 		{
-			FoundTransition = Transitions[Index];
+			return Transitions[Index];
 		}
 	}
 
+	return nullptr;
+}
+
+USMStateInstance_Base* USMStateInstance_Base::GetNextStateByTransitionIndex(int32 Index) const
+{
+	USMTransitionInstance* FoundTransition = GetTransitionByIndex(Index);
 	return FoundTransition ? FoundTransition->GetNextStateInstance() : nullptr;
 }
 
@@ -242,4 +247,95 @@ bool USMStateInstance_Base::IsRegisteredWithContextMenu() const
 
 USMStateInstance::USMStateInstance() : Super()
 {
+}
+
+void USMStateInstance::GetAllStateStackInstances(TArray<USMStateInstance_Base*>& StateStackInstances) const
+{
+	StateStackInstances.Reset();
+	
+	if (const FSMNode_Base* State = GetOwningNode())
+	{
+		const TArray<USMNodeInstance*>& StateStack = State->GetStackInstances();
+		StateStackInstances.Reserve(StateStack.Num());
+		
+		for (USMNodeInstance* Node : StateStack)
+		{
+			if (USMStateInstance_Base* StateInstance = Cast<USMStateInstance_Base>(Node))
+			{
+				StateStackInstances.Add(StateInstance);
+			}
+		}
+	}
+}
+
+USMStateInstance_Base* USMStateInstance::GetStateInStack(int32 Index) const
+{
+	if (const FSMNode_Base* State = GetOwningNode())
+	{
+		const TArray<USMNodeInstance*>& StateStack = State->GetStackInstances();
+		if (Index >= 0 && Index < StateStack.Num())
+		{
+			return Cast<USMStateInstance_Base>(StateStack[Index]);
+		}
+	}
+
+	return nullptr;
+}
+
+USMStateInstance_Base* USMStateInstance::GetStateInStackByClass(TSubclassOf<USMStateInstance> StateClass,
+	bool bIncludeChildren) const
+{
+	if (const FSMNode_Base* State = GetOwningNode())
+	{
+		const TArray<USMNodeInstance*>& StateStack = State->GetStackInstances();
+		for (USMNodeInstance* Node : StateStack)
+		{
+			if ((bIncludeChildren && Node->GetClass()->IsChildOf(StateClass)) || Node->GetClass() == StateClass)
+			{
+				return Cast<USMStateInstance_Base>(Node);
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+USMStateInstance_Base* USMStateInstance::GetStackOwnerInstance() const
+{
+	if (const FSMNode_Base* State = GetOwningNode())
+	{
+		return Cast<USMStateInstance_Base>(State->GetNodeInstance());
+	}
+
+	return nullptr;
+}
+
+void USMStateInstance::GetAllStatesInStackOfClass(TSubclassOf<USMStateInstance> StateClass, TArray<USMStateInstance_Base*>& StateStackInstances, bool bIncludeChildren) const
+{
+	StateStackInstances.Reset();
+	
+	if (const FSMNode_Base* State = GetOwningNode())
+	{
+		const TArray<USMNodeInstance*>& StateStack = State->GetStackInstances();
+		for (USMNodeInstance* Node : StateStack)
+		{
+			if ((bIncludeChildren && Node->GetClass()->IsChildOf(StateClass)) || Node->GetClass() == StateClass)
+			{
+				if (USMStateInstance_Base* StateNode = Cast<USMStateInstance_Base>(Node))
+				{
+					StateStackInstances.Add(StateNode);
+				}
+			}
+		}
+	}
+}
+
+int32 USMStateInstance::GetStateStackCount() const
+{
+	if (const FSMNode_Base* State = GetOwningNode())
+	{
+		return State->GetStackInstances().Num();
+	}
+
+	return 0;
 }

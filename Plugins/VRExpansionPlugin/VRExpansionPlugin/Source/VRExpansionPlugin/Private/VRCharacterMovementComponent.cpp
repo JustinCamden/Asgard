@@ -349,7 +349,7 @@ FNetworkPredictionData_Client* UVRCharacterMovementComponent::GetPredictionData_
 {
 	// Should only be called on client or listen server (for remote clients) in network games
 	check(CharacterOwner != NULL);
-	checkSlow(CharacterOwner->Role < ROLE_Authority || (CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy && GetNetMode() == NM_ListenServer));
+	checkSlow(CharacterOwner->GetLocalRole() < ROLE_Authority || (CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy && GetNetMode() == NM_ListenServer));
 	checkSlow(GetNetMode() == NM_Client || GetNetMode() == NM_ListenServer);
 
 	if (!ClientPredictionData)
@@ -591,7 +591,21 @@ void UVRCharacterMovementComponent::ServerMoveVROld_Implementation
 	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
 	check(ServerData);
 
-	if (!VerifyClientTimeStamp(OldTimeStamp, *ServerData))
+	bool bAutoAcceptPacket = false;
+
+	if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+	{
+		return;
+	}
+	else if (bJustUnseated)
+	{
+		ServerData->CurrentClientTimeStamp = OldTimeStamp;
+		bAutoAcceptPacket = true;
+		bJustUnseated = false;
+	}
+
+
+	if (!bAutoAcceptPacket && !VerifyClientTimeStamp(OldTimeStamp, *ServerData))
 	{
 		UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("ServerMoveOld: TimeStamp expired. %f, CurrentTimeStamp: %f, Character: %s"), OldTimeStamp, ServerData->CurrentClientTimeStamp, *GetNameSafe(CharacterOwner));
 		return;
@@ -669,7 +683,21 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
 	check(ServerData);
 
-	if (!VerifyClientTimeStamp(TimeStamp, *ServerData))
+	bool bAutoAcceptPacket = false;
+
+	if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+	{
+		return;
+	}
+	else if (bJustUnseated)
+	{
+		ServerData->CurrentClientTimeStamp = TimeStamp;
+		bAutoAcceptPacket = true;
+		bJustUnseated = false;
+	}
+
+
+	if (!bAutoAcceptPacket && !VerifyClientTimeStamp(TimeStamp, *ServerData))
 	{
 		const float ServerTimeStamp = ServerData->CurrentClientTimeStamp;
 		// This is more severe if the timestamp has a large discrepancy and hasn't been recently reset.
@@ -689,6 +717,7 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 
 	bool bServerReadyForClient = true;
+	
 	APlayerController* PC = Cast<APlayerController>(CharacterOwner->GetController());
 	if (PC)
 	{
@@ -752,12 +781,12 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 			VRRootCapsule->curCameraRot = FRotator(0.0f, FRotator::DecompressAxisFromShort(CapsuleYaw), 0.0f);
 			VRRootCapsule->DifferenceFromLastFrame = FVector(LFDiff.X, LFDiff.Y, 0.0f);
 			AdditionalVRInputVector = VRRootCapsule->DifferenceFromLastFrame;
-		
-			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+
+			if (BaseVRCharacterOwner)
 			{
-				if (BaseChar->VRReplicateCapsuleHeight && LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
+				if (BaseVRCharacterOwner->VRReplicateCapsuleHeight && LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
 				{
-					BaseChar->SetCharacterHalfHeightVR(LFDiff.Z, false);
+					BaseVRCharacterOwner->SetCharacterHalfHeightVR(LFDiff.Z, false);
 				//	BaseChar->ReplicatedCapsuleHeight.CapsuleHeight = LFDiff.Z;
 					//VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
 				}
@@ -1094,7 +1123,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 
 		const FFindFloorResult OldFloor = CurrentFloor;
 
-		//RestorePreAdditiveRootMotionVelocity();
+		RestorePreAdditiveRootMotionVelocity();
 		//RestorePreAdditiveVRMotionVelocity();
 
 		// Ensure velocity is horizontal.
@@ -1109,7 +1138,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 			devCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 		}
 
-		//ApplyRootMotionToVelocity(timeTick);
+		ApplyRootMotionToVelocity(timeTick);
 		ApplyVRMotionToVelocity(deltaTime);//timeTick);
 
 		devCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after Root Motion application (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
@@ -1286,10 +1315,15 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		if (IsMovingOnGround())
 		{
 			// Make velocity reflect actual move
-			if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && timeTick >= MIN_TICK_TIME)
+			
+			if (!bJustTeleported && timeTick >= MIN_TICK_TIME)
 			{
-				// TODO-RootMotionSource: Allow this to happen during partial override Velocity, but only set allowed axes?
-				Velocity =((UpdatedComponent->GetComponentLocation() - OldLocation ) / timeTick);
+				if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
+				{
+					// TODO-RootMotionSource: Allow this to happen during partial override Velocity, but only set allowed axes?
+					Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation) / timeTick);
+				}
+
 				RestorePreAdditiveVRMotionVelocity();
 			}
 		}
@@ -1417,6 +1451,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 	{
 		if (bAllowMovementMerging && PendingMove->CanCombineWith(NewMovePtr, CharacterOwner, ClientData->MaxMoveDeltaTime * CharacterOwner->GetActorTimeDilation(*MyWorld)))
 		{
+			QUICK_SCOPE_CYCLE_COUNTER(STAT_VRCharacterMovementComponent_CombineNetMove);
 			//SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCombineNetMove);
 
 			// Only combine and move back to the start location if we don't move back in to a spot that would make us collide with something new.
@@ -1432,8 +1467,9 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 			{
 				// Avoid updating Mesh bones to physics during the teleport back, since PerformMovement() will update it right away anyway below.
 				// Note: this must be before the FScopedMovementUpdate below, since that scope is what actually moves the character and mesh.
-				AVRBaseCharacter * BaseCharacter = Cast<AVRBaseCharacter>(CharacterOwner);
-				FScopedMeshBoneUpdateOverrideVR ScopedNoMeshBoneUpdate(BaseCharacter != nullptr ? BaseCharacter->GetIKMesh() : CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
+				//AVRBaseCharacter * BaseCharacter = Cast<AVRBaseCharacter>(CharacterOwner);		
+
+				FScopedMeshBoneUpdateOverrideVR ScopedNoMeshBoneUpdate(CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
 
 				// Accumulate multiple transform updates until scope ends.
 				FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, EScopedUpdate::DeferredUpdates);
@@ -1570,7 +1606,7 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	// This variable is a bit of a hack, it reduces the movement of the pawn in the direction of relative movement
 	//WallRepulsionMultiplier = 0.01f;
 	bUseClientControlRotation = false;
-	bAllowMovementMerging = false;
+	bAllowMovementMerging = true;
 	bRequestedMoveUseAcceleration = false;
 }
 
@@ -2773,7 +2809,7 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 	// Rewind the players position by the new capsule location
 	RewindVRRelativeMovement();
 
-	//RestorePreAdditiveRootMotionVelocity();
+	RestorePreAdditiveRootMotionVelocity();
 	//RestorePreAdditiveVRMotionVelocity();
 
 	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
@@ -2786,7 +2822,7 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 		CalcVelocity(deltaTime, Friction, true, GetMaxBrakingDeceleration());
 	}
 
-//	ApplyRootMotionToVelocity(deltaTime);
+	ApplyRootMotionToVelocity(deltaTime);
 	//ApplyVRMotionToVelocity(deltaTime);
 
 	// Manually handle the velocity setup
@@ -2832,10 +2868,14 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 		}
 	}
 
-	if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
+	if (!bJustTeleported)
 	{
-		//Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / deltaTime;
-		Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation)) / deltaTime;
+		if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
+		{
+			//Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / deltaTime;
+			Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation)) / deltaTime;
+		}
+
 		RestorePreAdditiveVRMotionVelocity();
 	}
 }
@@ -2869,7 +2909,8 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		const FQuat PawnRotation = UpdatedComponent->GetComponentQuat();
 		bJustTeleported = false;
 
-		//RestorePreAdditiveRootMotionVelocity();
+		RestorePreAdditiveRootMotionVelocity();
+		RestorePreAdditiveVRMotionVelocity();
 
 		const FVector OldVelocity = Velocity;
 
@@ -2886,6 +2927,8 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 				Velocity.Z = OldVelocity.Z;
 			}
 		}
+
+		//Velocity += CustomVRInputVector / deltaTime;
 
 		// Compute current gravity
 		const FVector Gravity(0.f, 0.f, GetGravityZ());
@@ -2940,7 +2983,8 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 
 		//UE_LOG(LogCharacterMovement, Log, TEXT("dt=(%.6f) OldLocation=(%s) OldVelocity=(%s) NewVelocity=(%s)"), timeTick, *(UpdatedComponent->GetComponentLocation()).ToString(), *OldVelocity.ToString(), *Velocity.ToString());
 
-		//ApplyRootMotionToVelocity(timeTick);
+		ApplyRootMotionToVelocity(timeTick);
+		ApplyVRMotionToVelocity(deltaTime);
 
 		if (bNotifyApex && (Velocity.Z < 0.f))
 		{
@@ -2950,7 +2994,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		}
 
 		// Compute change in position (using midpoint integration method).
-		FVector Adjusted = (0.5f * (OldVelocity + Velocity) * timeTick) + ((AdditionalVRInputVector / deltaTime) * timeTick);
+		FVector Adjusted = (0.5f * (OldVelocity + Velocity) * timeTick) /*+ ((AdditionalVRInputVector / deltaTime) * timeTick)*/;
 
 		// Special handling if ending the jump force where we didn't apply gravity during the jump.
 		if (bEndingJumpForce && !bApplyGravityWhileJumping)
@@ -2958,7 +3002,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 			// We had a portion of the time at constant speed then a portion with acceleration due to gravity.
 			// Account for that here with a more correct change in position.
 			const float NonGravityTime = FMath::Max(0.f, timeTick - GravityTime);
-			Adjusted = ((OldVelocity * NonGravityTime) + (0.5f * (OldVelocity + Velocity) * GravityTime)) + ((AdditionalVRInputVector / deltaTime) * timeTick);
+			Adjusted = ((OldVelocity * NonGravityTime) + (0.5f * (OldVelocity + Velocity) * GravityTime)) /*+ ((AdditionalVRInputVector / deltaTime) * timeTick)*/;
 		}
 
 		// Move
@@ -3205,7 +3249,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 	}
 
 	// Root motion not for VR
-	if ((!CharacterOwner || !CharacterOwner->Controller) && !bRunPhysicsWithNoController /*&& !HasRootMotion()*/)
+	if ((!CharacterOwner || !CharacterOwner->Controller) && !bRunPhysicsWithNoController && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 	{
 		Acceleration = FVector::ZeroVector;
 		Velocity = FVector::ZeroVector;
@@ -3215,7 +3259,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 	// Rewind the players position by the new capsule location
 	RewindVRRelativeMovement();
 
-	//RestorePreAdditiveRootMotionVelocity();
+	RestorePreAdditiveRootMotionVelocity();
 	//RestorePreAdditiveVRMotionVelocity();
 
 	// Ensure velocity is horizontal.
@@ -3230,7 +3274,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 		devCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysNavWalking: Velocity contains NaN after CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 	//}
 
-	//ApplyRootMotionToVelocity(deltaTime);
+	ApplyRootMotionToVelocity(deltaTime);
 	ApplyVRMotionToVelocity(deltaTime);
 
 	/*if (IsFalling())
@@ -3274,9 +3318,9 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 
 		if (bDeltaMoveNearlyZero && bSameNavLocation)
 		{
-			if (const INavigationDataInterface * ProjectionNavData = GetNavData())
+			if (const INavigationDataInterface * NavData = GetNavData())
 			{
-				if (!ProjectionNavData->IsNodeRefValid(CachedNavLocation.NodeRef))
+				if (!NavData->IsNodeRefValid(CachedNavLocation.NodeRef))
 				{
 					CachedNavLocation.NodeRef = INVALID_NAVNODEREF;
 					bSameNavLocation = false;
@@ -3342,7 +3386,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 		}
 
 		// Update velocity to reflect actual move
-		if (!bJustTeleported /*&& !HasRootMotion()*/)
+		if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasVelocity())
 		{
 			Velocity = (GetActorFeetLocationVR() - OldLocation) / deltaTime;
 			MaintainHorizontalGroundVelocity();
@@ -3368,7 +3412,7 @@ void UVRCharacterMovementComponent::PhysSwimming(float deltaTime, int32 Iteratio
 	// Rewind the players position by the new capsule location
 	RewindVRRelativeMovement();
 
-	//RestorePreAdditiveRootMotionVelocity();
+	RestorePreAdditiveRootMotionVelocity();
 
 	float NetFluidFriction = 0.f;
 	float Depth = ImmersionDepth();
@@ -3397,7 +3441,7 @@ void UVRCharacterMovementComponent::PhysSwimming(float deltaTime, int32 Iteratio
 		Velocity.Z += GetGravityZ() * deltaTime * (1.f - NetBuoyancy);
 	}
 
-	//ApplyRootMotionToVelocity(deltaTime);
+	ApplyRootMotionToVelocity(deltaTime);
 
 	FVector Adjusted = Velocity * deltaTime;
 	FHitResult Hit(1.f);
@@ -4091,11 +4135,11 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 		// Trust the server's control yaw
 		if (ClientData->LastAckedMove.IsValid() && !FMath::IsNearlyEqual(ClientData->LastAckedMove->SavedControlRotation.Yaw, YawValue))
 		{
-			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+			if (BaseVRCharacterOwner)
 			{
-				if (BaseChar->bUseControllerRotationYaw)
+				if (BaseVRCharacterOwner->bUseControllerRotationYaw)
 				{
-					AController * myController = BaseChar->GetController();
+					AController * myController = BaseVRCharacterOwner->GetController();
 					if (myController)
 					{
 						//FRotator newRot = myController->GetControlRotation();
@@ -4103,7 +4147,7 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 					}
 				}
 
-				BaseChar->SetActorRotation(FRotator(0.f, YawValue, 0.f));
+				BaseVRCharacterOwner->SetActorRotation(FRotator(0.f, YawValue, 0.f));
 			}
 		}
 	}

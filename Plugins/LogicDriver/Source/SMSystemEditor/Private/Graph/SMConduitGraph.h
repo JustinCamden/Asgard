@@ -13,8 +13,8 @@ class USMConduitGraph : public USMGraphK2
 
 public:
 	// USMGraphK2
-	bool HasAnyLogicConnections() const override;
-	FSMNode_Base* GetRuntimeNode() const override { return ResultNode->GetRunTimeNode(); }
+	virtual bool HasAnyLogicConnections() const override;
+	virtual FSMNode_Base* GetRuntimeNode() const override { return ResultNode->GetRunTimeNode(); }
 	// ~USMGraphK2
 
 public:

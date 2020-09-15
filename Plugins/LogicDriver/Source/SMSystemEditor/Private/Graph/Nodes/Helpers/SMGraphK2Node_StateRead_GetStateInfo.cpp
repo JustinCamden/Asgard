@@ -8,7 +8,7 @@
 #include "K2Node_CallFunction.h"
 #include "SMUtils.h"
 #include "K2Node_StructMemberGet.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "KismetCompiler.h"
 
 #define LOCTEXT_NAMESPACE "SMStateMachineReadNodeGetInfo"

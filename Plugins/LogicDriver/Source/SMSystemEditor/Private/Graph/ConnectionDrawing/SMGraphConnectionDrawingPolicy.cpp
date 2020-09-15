@@ -24,9 +24,9 @@ void FSMGraphConnectionDrawingPolicy::DetermineWiringStyle(UEdGraphPin* OutputPi
 		if (USMGraphNode_TransitionEdge* TransNode = Cast<USMGraphNode_TransitionEdge>(InputPin->GetOwningNode()))
 		{
 			Params.WireColor = TransNode->GetTransitionColor(HoveredPins.Contains(InputPin));
-
+			Params.bDrawBubbles = TransNode->WasEvaluating();
 			// Transition connects same states -- special case drawing.
-			if(TransNode->GetStartNode() == TransNode->GetEndNode())
+			if(TransNode->GetFromState() == TransNode->GetToState())
 			{
 				Params.bUserFlag2 = true;
 			}
@@ -88,8 +88,8 @@ void FSMGraphConnectionDrawingPolicy::DetermineLinkGeometry(FArrangedChildren& A
 	}
 	else if (USMGraphNode_TransitionEdge* EdgeNode = Cast<USMGraphNode_TransitionEdge>(InputPin->GetOwningNode()))
 	{
-		USMGraphNode_StateNodeBase* Start = EdgeNode->GetStartNode();
-		USMGraphNode_StateNodeBase* End = EdgeNode->GetEndNode();
+		USMGraphNode_StateNodeBase* Start = EdgeNode->GetFromState();
+		USMGraphNode_StateNodeBase* End = EdgeNode->GetToState();
 		if (Start != nullptr && End != nullptr)
 		{
 			int32* StartNodeIndex = NodeWidgetMap.Find(Start);
@@ -111,6 +111,18 @@ void FSMGraphConnectionDrawingPolicy::DetermineLinkGeometry(FArrangedChildren& A
 			EndWidgetGeometry = PinGeometries->Find(InputWidget);
 		}
 	}
+
+	// Cancel out if the widgets are both still being constructed. Prevents a flicker drawing the connections initially.
+	if (StartWidgetGeometry && EndWidgetGeometry && StartWidgetGeometry->Widget->NeedsPrepass() && EndWidgetGeometry->Widget->NeedsPrepass())
+	{
+		// If the widgets are off screen we should try rendering it since the connection could still be visible.
+		if (ClippingRect.ContainsPoint(StartWidgetGeometry->Geometry.GetAbsolutePosition()) ||
+			ClippingRect.ContainsPoint(EndWidgetGeometry->Geometry.GetAbsolutePosition()))
+		{
+			// At least one widget is on screen and at least one widget is being constructed. Cancel the geometry out so it won't be rendered.
+			StartWidgetGeometry = EndWidgetGeometry = nullptr;
+		}
+	}
 }
 
 
@@ -127,14 +139,14 @@ void FSMGraphConnectionDrawingPolicy::DrawPreviewConnector(const FGeometry& PinG
 
 void FSMGraphConnectionDrawingPolicy::DrawSplineWithArrow(const FVector2D& StartAnchorPoint, const FVector2D& EndAnchorPoint, const FConnectionParams& Params)
 {
-	// Looping back to self.
 	if(Params.bUserFlag2)
 	{
+		// Looping back to self.
 		Internal_DrawCurvedLineWithArrow(StartAnchorPoint, Params);
 	}
-	// Connecting different points.
 	else
 	{
+		// Connecting different points.
 		Internal_DrawLineWithArrow(StartAnchorPoint, EndAnchorPoint, Params);
 	}
 }
@@ -183,7 +195,7 @@ void FSMGraphConnectionDrawingPolicy::Internal_DrawLineWithArrow(const FVector2D
 	if (bIsParallel)
 	{
 		DrawConnection(WireLayerID, StartPoint - Normal * 2.5f, EndPoint - Normal * 2.5f, Params);
-		DrawConnection(WireLayerID, StartPoint + Normal * 2.5f, EndPoint + Normal * 2.5, Params);
+		DrawConnection(WireLayerID, StartPoint + Normal * 2.5f, EndPoint + Normal * 2.5f, Params);
 	}
 	else
 	{

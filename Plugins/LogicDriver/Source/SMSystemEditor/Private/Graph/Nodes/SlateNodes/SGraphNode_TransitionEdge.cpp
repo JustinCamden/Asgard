@@ -5,13 +5,13 @@
 #include "SGraphPanel.h"
 #include "SGraphPreviewer.h"
 #include "Configuration/SMEditorStyle.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "SKismetLinearExpression.h"
 #include "Graph/Nodes/SMGraphNode_StateNode.h"
 #include "Graph/Nodes/SMGraphNode_TransitionEdge.h"
 #include "Graph/ConnectionDrawing/SMGraphConnectionDrawingPolicy.h"
 #include "Graph/SMTransitionGraph.h"
-#include "SMNodeInstanceUtils.h"
+#include "Utilities/SMNodeInstanceUtils.h"
 #include "Widgets/SToolTip.h"
 
 
@@ -19,8 +19,9 @@
 
 void SGraphNode_TransitionEdge::Construct(const FArguments& InArgs, USMGraphNode_TransitionEdge* InNode)
 {
-	this->GraphNode = InNode;
-	this->UpdateGraphNode();
+	GraphNode = InNode;
+	CastChecked<USMGraphNode_Base>(GraphNode)->OnWidgetConstruct();
+	UpdateGraphNode();
 }
 
 void SGraphNode_TransitionEdge::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime,
@@ -49,23 +50,37 @@ void SGraphNode_TransitionEdge::PerformSecondPassLayout(const TMap< UObject*, TS
 	FGeometry StartGeom;
 	FGeometry EndGeom;
 
-	USMGraphNode_StateNodeBase* Start = EdgeNode->GetStartNode();
-	USMGraphNode_StateNodeBase* End = EdgeNode->GetEndNode();
-	if (Start && End)
+	int32 ThisIndex = 0;
+	int32 TransitionCount = 1;
+	
+	USMGraphNode_StateNodeBase* FromState = EdgeNode->GetFromState();
+	USMGraphNode_StateNodeBase* ToState = EdgeNode->GetToState();
+	if (FromState && ToState)
 	{
-		const TSharedRef<SNode>* pFromWidget = NodeToWidgetLookup.Find(Start);
-		const TSharedRef<SNode>* pToWidget = NodeToWidgetLookup.Find(End);
+		const TSharedRef<SNode>* pFromWidget = NodeToWidgetLookup.Find(FromState);
+		const TSharedRef<SNode>* pToWidget = NodeToWidgetLookup.Find(ToState);
 		if (pFromWidget && pToWidget)
 		{
 			const TSharedRef<SNode>& FromWidget = *pFromWidget;
 			const TSharedRef<SNode>& ToWidget = *pToWidget;
 
-			StartGeom = FGeometry(FVector2D(Start->NodePosX, Start->NodePosY), FVector2D::ZeroVector, FromWidget->GetDesiredSize(), 1.0f);
-			EndGeom = FGeometry(FVector2D(End->NodePosX, End->NodePosY), FVector2D::ZeroVector, ToWidget->GetDesiredSize(), 1.0f);
+			StartGeom = FGeometry(FVector2D(FromState->NodePosX, FromState->NodePosY), FVector2D::ZeroVector, FromWidget->GetDesiredSize(), 1.0f);
+			EndGeom = FGeometry(FVector2D(ToState->NodePosX, ToState->NodePosY), FVector2D::ZeroVector, ToWidget->GetDesiredSize(), 1.0f);
+
+			TArray<USMGraphNode_TransitionEdge*> Transitions;
+			FromState->GetOutputTransitions(Transitions);
+
+			Transitions = Transitions.FilterByPredicate([ToState](const USMGraphNode_TransitionEdge* InTransition) -> bool
+			{
+				return InTransition->GetToState() == ToState;
+			});
+
+			ThisIndex = Transitions.IndexOfByKey(EdgeNode);
+			TransitionCount = Transitions.Num();
 		}
 	}
 
-	PositionBetweenTwoNodesWithOffset(StartGeom, EndGeom, 0, 1);
+	PositionBetweenTwoNodesWithOffset(StartGeom, EndGeom, ThisIndex, TransitionCount);
 }
 
 void SGraphNode_TransitionEdge::UpdateGraphNode()
@@ -109,7 +124,7 @@ TSharedPtr<SToolTip> SGraphNode_TransitionEdge::GetComplexTooltip()
 	bool bHasPreEvalLogic = false;
 	bool bHasPostEvalLogic = false;
 
-	USMGraphNode_StateNodeBase* FromStateNode = TransitionNode->GetStartNode();
+	USMGraphNode_StateNodeBase* FromStateNode = TransitionNode->GetFromState();
 
 	UEdGraphPin* EvalPin = nullptr;
 	if(USMTransitionGraph* TransitionGraph = Cast<USMTransitionGraph>(TransitionNode->GetBoundGraph()))

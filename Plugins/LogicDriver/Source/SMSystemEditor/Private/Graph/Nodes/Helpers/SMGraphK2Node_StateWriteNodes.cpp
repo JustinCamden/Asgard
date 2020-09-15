@@ -1,14 +1,15 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "SMGraphK2Node_StateWriteNodes.h"
+#include "K2Node_StructMemberSet.h"
 #include "BlueprintNodeSpawner.h"
 #include "BlueprintActionDatabaseRegistrar.h"
-#include "SMBlueprintEditorUtils.h"
-#include "SMBlueprint.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
+#include "Blueprints/SMBlueprint.h"
 #include "EdGraph/EdGraph.h"
 #include "Graph/Schema/SMGraphK2Schema.h"
 #include "Graph/SMTransitionGraph.h"
 #include "Graph/SMStateGraph.h"
-#include "K2Node_StructMemberSet.h"
+#include "Graph/SMConduitGraph.h"
 
 #define LOCTEXT_NAMESPACE "SMStateMachineWriteNode"
 
@@ -92,17 +93,38 @@ void USMGraphK2Node_StateWriteNode_CanEvaluate::AllocateDefaultPins()
 
 bool USMGraphK2Node_StateWriteNode_CanEvaluate::IsCompatibleWithGraph(UEdGraph const* Graph) const
 {
-	return Graph->IsA<USMTransitionGraph>();
+	return Graph->IsA<USMTransitionGraph>() || Graph->IsA<USMConduitGraph>();
+}
+
+bool USMGraphK2Node_StateWriteNode_CanEvaluate::IsActionFilteredOut(FBlueprintActionFilter const& Filter)
+{
+	for (UBlueprint* Blueprint : Filter.Context.Blueprints)
+	{
+		if (!Cast<USMBlueprint>(Blueprint))
+		{
+			return true;
+		}
+	}
+
+	for (UEdGraph* Graph : Filter.Context.Graphs)
+	{
+		if (!Graph->IsA<USMTransitionGraph>() && !Graph->IsA<USMConduitGraph>())
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 FText USMGraphK2Node_StateWriteNode_CanEvaluate::GetNodeTitle(ENodeTitleType::Type TitleType) const
 {
-	return LOCTEXT("SetCanTransitionEvaluate", "Set Can Transition Evaluate Conditionally");
+	return LOCTEXT("SetCanEvaluate", "Set Can Evaluate Conditionally");
 }
 
 FText USMGraphK2Node_StateWriteNode_CanEvaluate::GetTooltipText() const
 {
-	return LOCTEXT("CanEvaluateTooltip", "If the transition is allowed to evaluate. If false CanEnterTransition logic is never evaluated and this transition will never be taken.");
+	return LOCTEXT("CanEvaluateTooltip", "If the transition or conduit is allowed to evaluate. If false CanEnterTransition logic is never evaluated and this transition (or conduit) will never be taken.");
 }
 
 void USMGraphK2Node_StateWriteNode_CanEvaluate::GetMenuActions(
@@ -216,16 +238,31 @@ FText USMGraphK2Node_StateWriteNode_TransitionEventReturn::GetNodeTitle(ENodeTit
 void USMGraphK2Node_StateWriteNode_TransitionEventReturn::CustomExpandNode(FSMKismetCompilerContext& CompilerContext,
                                                                            USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty)
 {
-	// Normal write node processing would create this but we need to possibly extend nodes after this one.
+	// Manually add an evaluation pin to signal to the transition it is evaluating.
+	UEdGraphPin* EvalPin = CreatePin(EGPD_Input, USMGraphK2Schema::PC_Boolean, TEXT("bIsEvaluating"));
+	EvalPin->DefaultValue = "true";
+	
 	UK2Node_StructMemberSet* MemberSet = CompilerContext.CreateSetter(this, NodeProperty->GetFName(), RuntimeNodeContainer->GetRunTimeNodeType());
 
+	UEdGraphPin* ThenPin = USMGraphK2Schema::GetThenPin(MemberSet);
+	
 	if(bEventTriggersUpdate)
 	{
 		UFunction* Function = USMInstance::StaticClass()->FindFunctionByName("Internal_Update"); // Protected function.
 		check(Function);
 		UK2Node_CallFunction* UpdateFunctionNode = FSMBlueprintEditorUtils::CreateFunctionCall(CompilerContext.ConsolidatedEventGraph, Function);
 
-		GetSchema()->TryCreateConnection(USMGraphK2Schema::GetThenPin(MemberSet), UpdateFunctionNode->GetExecPin());
+		GetSchema()->TryCreateConnection(ThenPin, UpdateFunctionNode->GetExecPin());
+		ThenPin = UpdateFunctionNode->GetThenPin();
+	}
+
+	// Add special cleanup handling.
+	{
+		UFunction* CleanupFunction = USMInstance::StaticClass()->FindFunctionByName("Internal_EventCleanup"); // Protected function.
+		check(CleanupFunction);
+		UK2Node_CallFunction* CleanupFunctionNode = CreateFunctionCallWithGuidInput(CleanupFunction, CompilerContext, RuntimeNodeContainer, NodeProperty, "NodeGuid");
+
+		GetSchema()->TryCreateConnection(ThenPin, CleanupFunctionNode->GetExecPin());
 	}
 }
 

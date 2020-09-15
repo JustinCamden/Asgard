@@ -4,7 +4,7 @@
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "BlueprintNodeSpawner.h"
 #include "BlueprintActionDatabaseRegistrar.h"
-#include "SMBlueprint.h"
+#include "Blueprints/SMBlueprint.h"
 #include "EdGraph/EdGraphSchema.h"
 #include "EdGraph/EdGraph.h"
 #include "Graph/Schema/SMGraphSchema.h"

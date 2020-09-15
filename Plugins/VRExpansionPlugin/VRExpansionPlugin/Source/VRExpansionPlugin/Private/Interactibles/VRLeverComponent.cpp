@@ -61,6 +61,9 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	bUngripAtTargetRotation = false;
 	bDenyGripping = false;
 
+	bIsLocked = false;
+	bAutoDropWhenLocked = true;
+
 	GripPriority = 1;
 
 	// Set to only overlap with things so that its not ruined by touching over actors
@@ -121,6 +124,22 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	bool bWasLerping = bIsLerping;
+
+	// If we are locked then end the lerp, no point
+	if (bIsLocked)
+	{
+
+		if (bWasLerping)
+		{
+			bIsLerping = false;
+
+			// If we start lerping while locked, just end it
+			OnLeverFinishedLerping.Broadcast(CurrentLeverAngle);
+			ReceiveLeverFinishedLerping(CurrentLeverAngle);
+		}
+
+		return;
+	}
 
 	if (bIsLerping)
 	{
@@ -209,8 +228,31 @@ void UVRLeverComponent::OnUnregister()
 	Super::OnUnregister();
 }
 
+bool UVRLeverComponent::CheckAutoDrop(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation)
+{
+	// Converted to a relative value now so it should be correct
+	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialInteractorDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
+	{
+		GrippingController->DropObjectByInterface(this, HoldingGrip.GripID);
+		return true;
+	}
+
+	return false;
+}
+
 void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) 
 {
+	if (bIsLocked)
+	{
+		if (bAutoDropWhenLocked)
+		{
+			// Check if we should auto drop
+			CheckAutoDrop(GrippingController, GripInformation);
+		}
+
+		return;
+	}
+
 	// Handle manual tracking here
 	FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
 	FTransform CurrentRelativeTransform = InitialRelativeTransform * ParentTransform;
@@ -280,12 +322,8 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 	default:break;
 	}
 
-	// Also set it to after rotation
-	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialInteractorDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
-	{
-		GrippingController->DropObjectByInterface(this, HoldingGrip.GripID);
-		return;
-	}
+	// Check if we should auto drop
+	CheckAutoDrop(GrippingController, GripInformation);
 }
 
 void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 
@@ -397,6 +435,16 @@ void UVRLeverComponent::OnGripRelease_Implementation(UGripMotionControllerCompon
 	OnDropped.Broadcast(ReleasingController, GripInformation, bWasSocketed);
 }
 
+void UVRLeverComponent::SetGripPriority(int NewGripPriority)
+{
+	GripPriority = NewGripPriority;
+}
+
+void UVRLeverComponent::SetIsLocked(bool bNewLockedState)
+{
+	bIsLocked = bNewLockedState;
+}
+
 void UVRLeverComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
 void UVRLeverComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
 void UVRLeverComponent::OnSecondaryGrip_Implementation(UGripMotionControllerComponent * GripOwningController, USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
@@ -498,7 +546,7 @@ void UVRLeverComponent::ClosestPrimarySlotInRange_Implementation(FVector WorldLo
 	bHadSlotInRange = false;
 }*/
 
-void UVRLeverComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+void UVRLeverComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {
 	bHadSlotInRange = false;
 }

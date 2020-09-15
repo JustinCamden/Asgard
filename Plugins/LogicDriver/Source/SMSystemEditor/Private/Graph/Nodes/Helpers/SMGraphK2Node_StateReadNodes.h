@@ -12,19 +12,19 @@ class USMGraphK2Node_StateReadNode : public USMGraphK2Node_RuntimeNodeReference
 	GENERATED_UCLASS_BODY()
 
 	// UEdGraphNode
-	void PostPlacedNewNode() override;
-	void PostPasteNode() override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
-	bool CanUserDeleteNode() const override { return true; }
-	bool CanDuplicateNode() const override { return true; }
-	bool IsNodePure() const override { return true; }
-	FText GetMenuCategory() const override;
-	bool IsActionFilteredOut(class FBlueprintActionFilter const& Filter) override;
+	virtual void PostPlacedNewNode() override;
+	virtual void PostPasteNode() override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual bool CanUserDeleteNode() const override { return true; }
+	virtual bool CanDuplicateNode() const override { return true; }
+	virtual bool IsNodePure() const override { return true; }
+	virtual FText GetMenuCategory() const override;
+	virtual bool IsActionFilteredOut(class FBlueprintActionFilter const& Filter) override;
 	//~ UEdGraphNode
 
 	// USMGraphK2Node_Base
-	bool CanCollapseNode() const override { return true; }
-	bool CanCollapseToFunctionOrMacro() const override { return true; }
+	virtual bool CanCollapseNode() const override { return true; }
+	virtual bool CanCollapseToFunctionOrMacro() const override { return true; }
 	//~ End UEdGraphNode Interface
 
 	/** Returns either the current state or the FromState of a transition. */
@@ -44,10 +44,10 @@ class USMGraphK2Node_StateReadNode_HasStateUpdated : public USMGraphK2Node_State
 	GENERATED_UCLASS_BODY()
 
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual void AllocateDefaultPins() override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
 	//~ UEdGraphNode
 };
 
@@ -58,10 +58,10 @@ class USMGraphK2Node_StateReadNode_TimeInState : public USMGraphK2Node_StateRead
 	GENERATED_UCLASS_BODY()
 
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual void AllocateDefaultPins() override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
 	//~ UEdGraphNode
 };
 
@@ -72,11 +72,11 @@ class USMGraphK2Node_StateReadNode_CanEvaluate : public USMGraphK2Node_StateRead
 	GENERATED_UCLASS_BODY()
 
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual void AllocateDefaultPins() override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
 	//~ UEdGraphNode
 };
 
@@ -87,11 +87,11 @@ class USMGraphK2Node_StateReadNode_CanEvaluateFromEvent : public USMGraphK2Node_
 	GENERATED_UCLASS_BODY()
 
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual void AllocateDefaultPins() override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
 	//~ UEdGraphNode
 };
 
@@ -102,16 +102,16 @@ class USMGraphK2Node_StateReadNode_GetStateInformation : public USMGraphK2Node_S
 	GENERATED_UCLASS_BODY()
 
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual void AllocateDefaultPins() override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
 	//~ UEdGraphNode
 
 	// USMGraphK2Node_RuntimeNodeReference
-	bool HandlesOwnExpansion() const override { return true; }
-	void CustomExpandNode(FSMKismetCompilerContext& CompilerContext, USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty) override;
+	virtual bool HandlesOwnExpansion() const override { return true; }
+	virtual void CustomExpandNode(FSMKismetCompilerContext& CompilerContext, USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty) override;
 	// ~USMGraphK2Node_RuntimeNodeReference
 };
 
@@ -121,16 +121,16 @@ class USMGraphK2Node_StateReadNode_GetTransitionInformation : public USMGraphK2N
 	GENERATED_UCLASS_BODY()
 
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual void AllocateDefaultPins() override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
 	//~ UEdGraphNode
 
 	// USMGraphK2Node_RuntimeNodeReference
-	bool HandlesOwnExpansion() const override { return true; }
-	void CustomExpandNode(FSMKismetCompilerContext& CompilerContext, USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty) override;
+	virtual bool HandlesOwnExpansion() const override { return true; }
+	virtual void CustomExpandNode(FSMKismetCompilerContext& CompilerContext, USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty) override;
 	// ~USMGraphK2Node_RuntimeNodeReference
 };
 
@@ -140,19 +140,19 @@ class USMGraphK2Node_StateReadNode_GetStateMachineReference : public USMGraphK2N
 	GENERATED_UCLASS_BODY()
 
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
-	void PostPasteNode() override;
-	bool HasExternalDependencies(TArray<class UStruct*>* OptionalOutput) const override;
-	FBlueprintNodeSignature GetSignature() const override;
+	virtual void AllocateDefaultPins() override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual void PostPasteNode() override;
+	virtual bool HasExternalDependencies(TArray<class UStruct*>* OptionalOutput) const override;
+	virtual FBlueprintNodeSignature GetSignature() const override;
 	//~ UEdGraphNode
 
 	// USMGraphK2Node_RuntimeNodeReference
-	bool HandlesOwnExpansion() const override { return true; }
-	void CustomExpandNode(FSMKismetCompilerContext& CompilerContext, USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty) override;
+	virtual bool HandlesOwnExpansion() const override { return true; }
+	virtual void CustomExpandNode(FSMKismetCompilerContext& CompilerContext, USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty) override;
 	// ~USMGraphK2Node_RuntimeNodeReference
 
 	TSubclassOf<class UObject> GetStateMachineReferenceClass() const;
@@ -171,9 +171,9 @@ class USMGraphK2Node_StateMachineReadNode : public USMGraphK2Node_StateReadNode
 	GENERATED_UCLASS_BODY()
 
 	// UEdGraphNode
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
-	bool IsActionFilteredOut(class FBlueprintActionFilter const& Filter) override;
-	void ValidateNodeDuringCompilation(FCompilerResultsLog& MessageLog) const override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual bool IsActionFilteredOut(class FBlueprintActionFilter const& Filter) override;
+	virtual void ValidateNodeDuringCompilation(FCompilerResultsLog& MessageLog) const override;
 	// ~UEdGraphNode
 };
 
@@ -184,10 +184,10 @@ class USMGraphK2Node_StateMachineReadNode_InEndState : public USMGraphK2Node_Sta
 	GENERATED_UCLASS_BODY()
 
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual void AllocateDefaultPins() override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
 	//~ UEdGraphNode
 };
 
@@ -197,28 +197,36 @@ class USMGraphK2Node_StateReadNode_GetNodeInstance : public USMGraphK2Node_State
 	GENERATED_UCLASS_BODY()
 
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
-	void PostPasteNode() override;
-	FBlueprintNodeSignature GetSignature() const override;
+	virtual void AllocateDefaultPins() override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual void PostPasteNode() override;
+	virtual FBlueprintNodeSignature GetSignature() const override;
 	//~ UEdGraphNode
 
 	// USMGraphK2Node_RuntimeNodeReference
-	bool HandlesOwnExpansion() const override { return true; }
-	void CustomExpandNode(FSMKismetCompilerContext& CompilerContext, USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty) override;
+	virtual bool HandlesOwnExpansion() const override { return true; }
+	virtual void CustomExpandNode(FSMKismetCompilerContext& CompilerContext, USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty) override;
 	// ~USMGraphK2Node_RuntimeNodeReference
 
 	void AllocatePinsForType(TSubclassOf<class UObject> TargetType);
 	
-	/** The class type this is referencing. The output pin will be dynamic cast to this.
+	/**
+	 * The class type this is referencing. The output pin will be dynamic cast to this.
 	 * When force replacing references this can cause warnings, but is present in other UE4 blueprints. 
 	 */
 	UPROPERTY()
 	TSubclassOf<class UObject> ReferencedObject;
 
+	/** The guid of a specific node instance. Used for stack state instances. */
+	UPROPERTY()
+	FGuid NodeInstanceGuid;
+
+	UPROPERTY()
+	int32 NodeInstanceIndex;
+	
 	static void CreateAndWireExpandedNodes(UEdGraphNode* SourceNode, const TSubclassOf<UObject> Class, FSMKismetCompilerContext& CompilerContext,
 		USMGraphK2Node_RuntimeNodeContainer* RuntimeNodeContainer, FProperty* NodeProperty, class UK2Node_DynamicCast** CastOutputNode);
 };

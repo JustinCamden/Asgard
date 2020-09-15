@@ -7,7 +7,7 @@
 #include "Graph/Nodes/RootNodes/SMGraphK2Node_IntermediateNodes.h"
 #include "Graph/Nodes/RootNodes/SMGraphK2Node_StateEndNode.h"
 #include "Graph/Nodes/Helpers/SMGraphK2Node_FunctionNodes.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "K2Node_CallFunction.h"
 
 #define LOCTEXT_NAMESPACE "SMStateGraphSchema"

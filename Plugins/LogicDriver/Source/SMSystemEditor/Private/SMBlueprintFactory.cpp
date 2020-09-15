@@ -11,13 +11,14 @@
 #include "Graph/SMGraphK2.h"
 #include "Graph/Schema/SMGraphK2Schema.h"
 #include "Graph/Schema/SMGraphSchema.h"
-#include "SMBlueprint.h"
+#include "Blueprints/SMBlueprint.h"
 #include "SMInstance.h"
 #include "SMConduitInstance.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "ClassViewer/Private/UnloadedBlueprintData.h"
 #include "SMStateMachineInstance.h"
 #include "SMTransitionInstance.h"
+#include "Utilities/SMVersionUtils.h"
 
 
 #define LOCTEXT_NAMESPACE "SMBlueprintFactory"
@@ -121,6 +122,9 @@ FString USMBlueprintFactory::GetDefaultNewAssetName() const
 
 void USMBlueprintFactory::CreateGraphsForNewBlueprint(USMBlueprint* Blueprint)
 {
+	// New blueprints should always be on the latest version.
+	FSMVersionUtils::SetToLatestVersion(Blueprint);
+	
 	// Locate the blueprint's event graph or create a new one.
 	UEdGraph* EventGraph = FindObject<UEdGraph>(Blueprint, *(UEdGraphSchema_K2::GN_EventGraph.ToString()));
 
@@ -145,13 +149,22 @@ void USMBlueprintFactory::CreateGraphsForNewBlueprint(USMBlueprint* Blueprint)
 	if (Settings && Settings->bSpawnDefaultBlueprintNodes)
 	{
 		// Create default events.
+		const int32 NodePositionX = 255;
 		int32 NodePositionY = 0;
+		
 		// OnStateMachineStart
-		FKismetEditorUtilities::AddDefaultEventNode(Blueprint, EventGraph, GET_FUNCTION_NAME_CHECKED(USMInstance, OnStateMachineStart), USMInstance::StaticClass(), NodePositionY);
+		UK2Node_Event* OnStateMachineStartedNode = FKismetEditorUtilities::AddDefaultEventNode(Blueprint, EventGraph, GET_FUNCTION_NAME_CHECKED(USMInstance, OnStateMachineStart), USMInstance::StaticClass(), NodePositionY);
+		if (USMGraphK2Schema::GetThenPin(OnStateMachineStartedNode)->LinkedTo.Num() == 0)
+		{
+			FSMBlueprintEditorUtils::CreateParentFunctionCall(EventGraph, USMInstance::StaticClass()->FindFunctionByName(GET_FUNCTION_NAME_CHECKED(USMInstance, OnStateMachineStart)), OnStateMachineStartedNode, NodePositionX);
+		}
+		
 		// Tick
 		UK2Node_Event* TickFunctionNode = FKismetEditorUtilities::AddDefaultEventNode(Blueprint, EventGraph, GET_FUNCTION_NAME_CHECKED(USMInstance, Tick), USMInstance::StaticClass(), NodePositionY);
-		// Tick parent
-		FSMBlueprintEditorUtils::CreateParentFunctionCall(EventGraph, USMInstance::StaticClass()->FindFunctionByName(GET_FUNCTION_NAME_CHECKED(USMInstance, Tick)), TickFunctionNode);
+		if (USMGraphK2Schema::GetThenPin(TickFunctionNode)->LinkedTo.Num() == 0)
+		{
+			FSMBlueprintEditorUtils::CreateParentFunctionCall(EventGraph, USMInstance::StaticClass()->FindFunctionByName(GET_FUNCTION_NAME_CHECKED(USMInstance, Tick)), TickFunctionNode, NodePositionX);
+		}
 
 		int32 SafeXPosition = 0;
 		int32 SafeYPosition = 0;

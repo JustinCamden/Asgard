@@ -24,12 +24,30 @@ void FSMNode_Base::Initialize(UObject* Instance)
 	bInitialized = true;
 	GraphEvaluator.Initialize(Instance);
 
+	for (FSMExposedFunctionHandler& FunctionHandler : TransitionInitializedGraphEvaluators)
+	{
+		FunctionHandler.Initialize(Instance);
+	}
+	for (FSMExposedFunctionHandler& FunctionHandler : TransitionShutdownGraphEvaluators)
+	{
+		FunctionHandler.Initialize(Instance);
+	}
+	
 	CreateNodeInstance();
 }
 
 void FSMNode_Base::Reset()
 {
 	GraphEvaluator.Reset();
+	
+	for (FSMExposedFunctionHandler& FunctionHandler : TransitionInitializedGraphEvaluators)
+	{
+		FunctionHandler.Reset();
+	}
+	for (FSMExposedFunctionHandler& FunctionHandler : TransitionShutdownGraphEvaluators)
+	{
+		FunctionHandler.Reset();
+	}
 	ResetGraphProperties();
 }
 
@@ -88,15 +106,12 @@ void FSMNode_Base::SetOwnerNode(FSMNode_Base* Owner)
 void FSMNode_Base::CreateNodeInstance()
 {
 	GraphProperties.Reset();
-
+	
 	if (!NodeInstanceClass)
 	{
 		SetNodeInstanceClass(GetDefaultNodeInstanceClass());
 
-		if (!NodeInstanceClass)
-		{
-			return;
-		}
+		check(NodeInstanceClass);
 	}
 
 	UObject* TemplateInstance = nullptr;
@@ -112,9 +127,33 @@ void FSMNode_Base::CreateNodeInstance()
 	NodeInstance = NewObject<USMNodeInstance>(OwningInstance, NodeInstanceClass, NAME_None, RF_NoFlags, TemplateInstance);
 	NodeInstance->SetOwningNode(this);
 
+	CreateStackInstances();
 	CreateGraphProperties();
 
 	NodeInstance->ConstructionScript();
+
+	for (USMNodeInstance* Instance : StackNodeInstances)
+	{
+		Instance->ConstructionScript();
+	}
+}
+
+void FSMNode_Base::CreateStackInstances()
+{
+	for (const FName& StackTemplateName : StackTemplateNames)
+	{
+		UObject* TemplateInstance = USMUtils::FindTemplateFromInstance(OwningInstance, StackTemplateName);
+		if (TemplateInstance == nullptr)
+		{
+			LOG_ERROR(TEXT("Could not find node stack template %s for use on node %s from package %s."), *StackTemplateName.ToString(), *GetNodeName(), *OwningInstance->GetName());
+			continue;
+		}
+
+		USMNodeInstance* NewInstance = NewObject<USMNodeInstance>(OwningInstance, TemplateInstance->GetClass(), NAME_None, RF_NoFlags, TemplateInstance);
+		NewInstance->SetOwningNode(this);
+
+		StackNodeInstances.Add(NewInstance);
+	}
 }
 
 void FSMNode_Base::SetNodeInstanceClass(UClass* NewNodeInstanceClass)
@@ -135,6 +174,16 @@ bool FSMNode_Base::IsNodeInstanceClassCompatible(UClass* NewNodeInstanceClass) c
 	return false;
 }
 
+USMNodeInstance* FSMNode_Base::GetNodeInStack(int32 Index) const
+{
+	if (Index >= 0 && Index < StackNodeInstances.Num())
+	{
+		return StackNodeInstances[Index];
+	}
+
+	return nullptr;
+}
+
 void FSMNode_Base::AddVariableGraphProperty(const FSMGraphProperty_Base& GraphProperty)
 {
 	VariableGraphProperties.Add(GraphProperty);
@@ -148,6 +197,21 @@ void FSMNode_Base::SetNodeName(const FString& Name)
 void FSMNode_Base::SetTemplateName(const FName& Name)
 {
 	TemplateName = Name;
+}
+
+void FSMNode_Base::AddStackTemplateName(const FName& Name)
+{
+	StackTemplateNames.Add(Name);
+}
+
+void FSMNode_Base::ExecuteInitializeNodes()
+{
+	USMUtils::ExecuteGraphFunctions(TransitionInitializedGraphEvaluators);
+}
+
+void FSMNode_Base::ExecuteShutdownNodes()
+{
+	USMUtils::ExecuteGraphFunctions(TransitionShutdownGraphEvaluators);
 }
 
 void FSMNode_Base::Execute()
@@ -172,6 +236,8 @@ void FSMNode_Base::SetActive(bool bValue)
 
 void FSMNode_Base::ExecuteGraphProperties(bool bVariablesOnly)
 {
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMNode_Base::ExecuteGraphProperties"), STAT_SMNode_Base_ExecuteGraphProperties, STATGROUP_LogicDriver);
+	
 	for (FSMGraphProperty_Base& GraphProperty : VariableGraphProperties)
 	{
 		GraphProperty.Execute();
@@ -206,8 +272,24 @@ void FSMNode_Base::CreateGraphProperties()
 	TSet<FProperty*> GraphStructPropertiesForStateMachine;
 	USMUtils::TryGetGraphPropertiesForClass(OwningInstance->GetClass(), GraphStructPropertiesForStateMachine);
 
+	CreateGraphPropertiesForTemplate(NodeInstance, GraphStructPropertiesForStateMachine);
+
+	for (USMNodeInstance* Template : StackNodeInstances)
+	{
+		CreateGraphPropertiesForTemplate(Template, GraphStructPropertiesForStateMachine);
+	}
+	
+	// Variable properties already have everything they need and just need to be initialized.
+	for(FSMGraphProperty_Base& VariableProperty : VariableGraphProperties)
+	{
+		VariableProperty.Initialize(OwningInstance);
+	}
+}
+
+void FSMNode_Base::CreateGraphPropertiesForTemplate(USMNodeInstance* Template, const TSet<FProperty*>& GraphStructPropertiesForStateMachine)
+{
 	/* Looks for the real property stored on the owning instance. */
-	auto GetRealProperty = [&](TSet<FProperty*>& Properties, const FSMGraphProperty_Base* GraphProperty) -> FSMGraphProperty_Base*
+	auto GetRealProperty = [&](const TSet<FProperty*>& Properties, const FSMGraphProperty_Base* GraphProperty) -> FSMGraphProperty_Base*
 	{
 		for (FProperty* Prop : Properties)
 		{
@@ -225,14 +307,13 @@ void FSMNode_Base::CreateGraphProperties()
 		}
 		return nullptr;
 	};
-
 	TSet<FProperty*> GraphStructProperties;
-	if (USMUtils::TryGetGraphPropertiesForClass(NodeInstanceClass, GraphStructProperties))
+	if (USMUtils::TryGetGraphPropertiesForClass(Template->GetClass(), GraphStructProperties))
 	{
 		for (FProperty* GraphStructProperty : GraphStructProperties)
 		{
 			TArray<FSMGraphProperty_Base*> GraphPropertyInstances;
-			USMUtils::BlueprintPropertyToNativeProperty(GraphStructProperty, NodeInstance, GraphPropertyInstances);
+			USMUtils::BlueprintPropertyToNativeProperty(GraphStructProperty, Template, GraphPropertyInstances);
 
 			for (FSMGraphProperty_Base* GraphProperty : GraphPropertyInstances)
 			{
@@ -243,11 +324,5 @@ void FSMNode_Base::CreateGraphProperties()
 				GraphProperties.AddUnique(GraphProperty);
 			}
 		}
-	}
-
-	// Variable properties already have everything they need and just need to be initialized.
-	for(FSMGraphProperty_Base& VariableProperty : VariableGraphProperties)
-	{
-		VariableProperty.Initialize(OwningInstance);
 	}
 }

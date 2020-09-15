@@ -1,10 +1,10 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 
 #include "SMKismetCompiler.h"
-#include "SMBlueprint.h"
+#include "Blueprints/SMBlueprint.h"
 #include "EdGraphUtilities.h"
 #include "ISMSystemEditorModule.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 #include "Kismet/KismetArrayLibrary.h"
 #include "Kismet2/KismetReinstanceUtilities.h"
 #include "Framework/Notifications/NotificationManager.h"
@@ -250,83 +250,110 @@ void FSMKismetCompilerContext::CopyTermDefaultsToDefaultObject(UObject* DefaultO
 			uint8* DestinationPtr = TargetProperty->ContainerPtrToValuePtr<uint8>(DefaultObject);
 			uint8* SourcePtr = SourceProperty->ContainerPtrToValuePtr<uint8>(RuntimeContainerNode);
 			TargetProperty->CopyCompleteValue(DestinationPtr, SourcePtr);
-			
+
 			FSMNode_Base* RunTimeNode = (FSMNode_Base*)DestinationPtr;
 			// Template Storage
 			// Templates are manually placed directly on the CDO with the CDO as the property owner.
 			// It is important that the final storage property be marked as Instanced. These conditions are necessary
 			// for templates to work properly in all scenarios especially cooked builds with BP Nativization.
-			
+
 			// Set the template to use for the reference. This doesn't have to be completely unique per use.
-			if (UObject* TemplateInstance = DefaultObjectTemplates.FindRef(RunTimeNode->GetNodeGuid()))
+			if (TArray<FTemplateContainer>* Templates = DefaultObjectTemplates.Find(RunTimeNode->GetNodeGuid()))
 			{
-				// Can't deep copy properties from the reference template CDO if it's still being compiled.
-				ensure(!TemplateInstance->GetClass()->HasAnyClassFlags(CLASS_LayoutChanging));
-
-				// Template name starts with class level in case of duplicate runtime nodes in the parent.
-				const FString TemplateName = FString::Printf(TEXT("TEMPLATE_%s_%s_%s"), *DefaultObject->GetClass()->GetName(), *RunTimeNode->GetNodeName(), *RunTimeNode->GetNodeGuid().ToString());
-				if (UObject* ExistingObject = FindObject<UObject>(DefaultObject, *TemplateName))
+				for (const FTemplateContainer& Template : *Templates)
 				{
-					FSMBlueprintEditorUtils::TrashObject(ExistingObject);
-				}
-
-				// At this point the templates are still parented to their graph node which is necessary since they could have been copied while their
-				// owner class has its layout generating (specifically Play in Stand Alone Game mode). Reinstantiate directly on the default object.
-				// Setting the TargetProperty as the parent won't work if the reference class is recompiled. This will reset the property on the struct.
-				UObject* TemplateArchetype = NewObject<UObject>(DefaultObject, TemplateInstance->GetClass(), *TemplateName, RF_ArchetypeObject | RF_Public, TemplateInstance);
-
-				// Check if this is a reference to another state machine blueprint.
-				if(USMInstance* ReferenceTemplate = Cast<USMInstance>(TemplateArchetype))
-				{
-					ensure(SourceProperty->Struct->IsChildOf(FSMStateMachine::StaticStruct()));
-					
-					// These templates can contain other references which need to be cleaned.
-					FSMBlueprintEditorUtils::CleanReferenceTemplates(Cast<USMInstance>(ReferenceTemplate));
-					((FSMStateMachine*)RunTimeNode)->SetReferencedTemplateName(TemplateArchetype->GetFName());
-				}
-				else
-				{
-					if (TMap<FGuid, USMGraphK2Node_Base*>* GraphPropertiesForTemplate = MappedTemplatesToNodeProperties.Find(TemplateInstance))
+					UObject* TemplateInstance = Template.Template;
+					if (!TemplateInstance)
 					{
-						// Regular class instance template which contains graph properties.
-						for (TFieldIterator<FProperty> TemplateIt(TemplateArchetype->GetClass(), EFieldIteratorFlags::IncludeSuper); TemplateIt; ++TemplateIt)
+						continue;
+					}
+					
+					// Can't deep copy properties from the reference template CDO if it's still being compiled.
+					ensure(!TemplateInstance->GetClass()->HasAnyClassFlags(CLASS_LayoutChanging));
+
+					// Template name starts with class level in case of duplicate runtime nodes in the parent.
+					FString NodeName = RunTimeNode->GetNodeName();
+					NodeName = FSMBlueprintEditorUtils::GetSafeName(NodeName);
+					FString TemplateName = FString::Printf(TEXT("TEMPLATE_%s_%s_%s"), *DefaultObject->GetClass()->GetName(), *NodeName, *RunTimeNode->GetNodeGuid().ToString());
+
+					if (Template.TemplateType == FTemplateContainer::StackTemplate)
+					{
+						ensureAlways(Template.TemplateGuid.IsValid());
+						TemplateName += "_" + Template.TemplateGuid.ToString();
+					}
+					
+					if (UObject* ExistingObject = FindObject<UObject>(DefaultObject, *TemplateName))
+					{
+						FSMBlueprintEditorUtils::TrashObject(ExistingObject);
+					}
+
+					// At this point the templates are still parented to their graph node which is necessary since they could have been copied while their
+					// owner class has its layout generating (specifically Play in Stand Alone Game mode). Reinstantiate directly on the default object.
+					// Setting the TargetProperty as the parent won't work if the reference class is recompiled. This will reset the property on the struct.
+					UObject* TemplateArchetype = NewObject<UObject>(DefaultObject, TemplateInstance->GetClass(), *TemplateName, RF_ArchetypeObject | RF_Public, TemplateInstance);
+
+					// Check if this is a reference to another state machine blueprint.
+					if (USMInstance* ReferenceTemplate = Cast<USMInstance>(TemplateArchetype))
+					{
+						ensureAlways(Template.TemplateType == FTemplateContainer::ReferenceTemplate);
+						ensureAlways(SourceProperty->Struct->IsChildOf(FSMStateMachine::StaticStruct()));
+
+						// These templates can contain other references which need to be cleaned.
+						FSMBlueprintEditorUtils::CleanReferenceTemplates(Cast<USMInstance>(ReferenceTemplate));
+						((FSMStateMachine*)RunTimeNode)->SetReferencedTemplateName(TemplateArchetype->GetFName());
+					}
+					else
+					{
+						if (TMap<FGuid, USMGraphK2Node_Base*>* GraphPropertiesForTemplate = MappedTemplatesToNodeProperties.Find(TemplateInstance))
 						{
-							TArray<FSMGraphProperty_Base*> GraphProperties;
-							USMUtils::BlueprintPropertyToNativeProperty(*TemplateIt, TemplateArchetype, GraphProperties);
-							for (FSMGraphProperty_Base* RuntimePropertyNode : GraphProperties)
+							// Regular class instance template which contains graph properties.
+							for (TFieldIterator<FProperty> TemplateIt(TemplateArchetype->GetClass(), EFieldIteratorFlags::IncludeSuper); TemplateIt; ++TemplateIt)
 							{
-								if (TMap<FGuid, FGuid>* GuidMap = GraphPropertyRemap.Find(TemplateInstance))
+								TArray<FSMGraphProperty_Base*> GraphProperties;
+								USMUtils::BlueprintPropertyToNativeProperty(*TemplateIt, TemplateArchetype, GraphProperties);
+								for (FSMGraphProperty_Base* RuntimePropertyNode : GraphProperties)
 								{
-									FGuid* RemappedGuid = GuidMap->Find(RuntimePropertyNode->GetGuid());
-									FGuid GuidToUse = RemappedGuid ? *RemappedGuid : RuntimePropertyNode->GetGuid();
-									USMGraphK2Node_PropertyNode_Base* GraphPropertyNode = Cast<USMGraphK2Node_PropertyNode_Base>(GraphPropertiesForTemplate->FindRef(
-										GuidToUse));
-									if (GraphPropertyNode)
+									if (TMap<FGuid, FGuid>* GuidMap = GraphPropertyRemap.Find(TemplateInstance))
 									{
-										FSMGraphProperty_Base* IntermediateRuntimeProperty = GraphPropertyNode->GetPropertyNodeChecked();
-										RuntimePropertyNode->SetOwnerGuid(GuidToUse);
-										RuntimePropertyNode->GraphEvaluator = IntermediateRuntimeProperty->GraphEvaluator;
+										FGuid* RemappedGuid = GuidMap->Find(RuntimePropertyNode->GetGuid());
+										FGuid GuidToUse = RemappedGuid ? *RemappedGuid : RuntimePropertyNode->GetGuid();
+										USMGraphK2Node_PropertyNode_Base* GraphPropertyNode = Cast<USMGraphK2Node_PropertyNode_Base>(GraphPropertiesForTemplate->FindRef(
+											GuidToUse));
+										if (GraphPropertyNode)
+										{
+											FSMGraphProperty_Base* IntermediateRuntimeProperty = GraphPropertyNode->GetPropertyNodeChecked();
+											RuntimePropertyNode->SetOwnerGuid(GuidToUse);
+											RuntimePropertyNode->GraphEvaluator = IntermediateRuntimeProperty->GraphEvaluator;
+										}
+									}
+								}
+							}
+							//  Automatically created variable properties.
+							for (const auto& KeyVal : *GraphPropertiesForTemplate)
+							{
+								if (USMGraphK2Node_PropertyNode_Base* GraphPropertyNode = Cast<USMGraphK2Node_PropertyNode_Base>(KeyVal.Value))
+								{
+									FSMGraphProperty_Base* PropertyNode = GraphPropertyNode->GetPropertyNodeChecked();
+									if (PropertyNode->ShouldAutoAssignVariable())
+									{
+										RunTimeNode->AddVariableGraphProperty(*PropertyNode);
 									}
 								}
 							}
 						}
-						//  Automatically created variable properties.
-						for(const auto& KeyVal : *GraphPropertiesForTemplate)
+
+						if (Template.TemplateType == FTemplateContainer::NodeTemplate)
 						{
-							if(USMGraphK2Node_PropertyNode_Base* GraphPropertyNode = Cast<USMGraphK2Node_PropertyNode_Base>(KeyVal.Value))
-							{
-								FSMGraphProperty_Base* PropertyNode = GraphPropertyNode->GetPropertyNodeChecked();
-								if(PropertyNode->ShouldAutoAssignVariable())
-								{
-									RunTimeNode->AddVariableGraphProperty(*PropertyNode);
-								}
-							}
+							RunTimeNode->SetTemplateName(TemplateArchetype->GetFName());
+						}
+						else if (Template.TemplateType == FTemplateContainer::StackTemplate)
+						{
+							RunTimeNode->AddStackTemplateName(TemplateArchetype->GetFName());
 						}
 					}
-					RunTimeNode->SetTemplateName(TemplateArchetype->GetFName());
+
+					DefaultInstance->ReferenceTemplates.AddUnique(TemplateArchetype);
 				}
-				
-				DefaultInstance->ReferenceTemplates.AddUnique(TemplateArchetype);
 			}
 		}
 	}
@@ -696,7 +723,7 @@ void FSMKismetCompilerContext::ProcessStateMachineGraph(USMGraph* StateMachineGr
 			{
 				if (USMGraphNode_TransitionEdge* Transition = AnyState->GetNextTransition(Idx))
 				{
-					USMGraphNode_StateNodeBase* TargetStateNode = Transition->GetEndNode();
+					USMGraphNode_StateNodeBase* TargetStateNode = Transition->GetToState();
 
 					for (UEdGraphNode* OtherNode : GraphNodes)
 					{
@@ -719,7 +746,7 @@ void FSMKismetCompilerContext::ProcessStateMachineGraph(USMGraph* StateMachineGr
 								if (USMNodeInstance* ClonedTemplate = ClonedTransition->GetNodeTemplate())
 								{
 									FSMNode_Base* RuntimeNode = FSMBlueprintEditorUtils::GetRuntimeNodeFromGraph(ClonedTransition->GetBoundGraph());
-									DefaultObjectTemplates.Add(RuntimeNode->GetNodeGuid(), ClonedTemplate);
+									AddDefaultObjectTemplate(RuntimeNode->GetNodeGuid(), ClonedTemplate, FTemplateContainer::ETemplateType::NodeTemplate);
 								}
 							}
 							
@@ -787,7 +814,7 @@ void FSMKismetCompilerContext::ProcessStateMachineGraph(USMGraph* StateMachineGr
 	{
 		if (USMGraphNode_TransitionEdge* EdgeNode = Cast<USMGraphNode_TransitionEdge>(GraphNode))
 		{
-			USMGraphNode_StateNodeBase* StartNode = EdgeNode->GetStartNode();
+			USMGraphNode_StateNodeBase* StartNode = EdgeNode->GetFromState();
 			if (!StartNode)
 			{
 				// These errors could occur if a compile happens while a state is being deleted.
@@ -801,7 +828,7 @@ void FSMKismetCompilerContext::ProcessStateMachineGraph(USMGraph* StateMachineGr
 				continue;
 			}
 
-			USMGraphNode_StateNodeBase* EndNode = EdgeNode->GetEndNode();
+			USMGraphNode_StateNodeBase* EndNode = EdgeNode->GetToState();
 			if (!EndNode)
 			{
 				// These errors could occur if a compile happens while a state is being deleted.
@@ -1030,28 +1057,13 @@ void FSMKismetCompilerContext::ProcessRuntimeReferences()
 		{
 			FSMExposedFunctionHandler Handler;
 			Handler.BoundFunction = FunctionName;
-
-			if (RuntimeType == FSMTransition::StaticStruct())
-			{
-				((FSMTransition*)RuntimeNode)->TransitionInitializedGraphEvaluators.Add(Handler);
-			}
-			else if (RuntimeType == FSMConduit::StaticStruct())
-			{
-				((FSMConduit*)RuntimeNode)->TransitionInitializedGraphEvaluators.Add(Handler);
-			}
+			RuntimeNode->TransitionInitializedGraphEvaluators.Add(Handler);
 		}
 		else if (USMGraphK2Node_TransitionShutdownNode* TransitionShutdownNode = Cast<USMGraphK2Node_TransitionShutdownNode>(RuntimeReferenceNode))
 		{
 			FSMExposedFunctionHandler Handler;
 			Handler.BoundFunction = FunctionName;
-			if (RuntimeType == FSMTransition::StaticStruct())
-			{
-				((FSMTransition*)RuntimeNode)->TransitionShutdownGraphEvaluators.Add(Handler);
-			}
-			else if (RuntimeType == FSMConduit::StaticStruct())
-			{
-				((FSMConduit*)RuntimeNode)->TransitionShutdownGraphEvaluators.Add(Handler);
-			}
+			RuntimeNode->TransitionShutdownGraphEvaluators.Add(Handler);
 		}
 		else if (USMGraphK2Node_TransitionPreEvaluateNode* TransitionPreEvaluateNode = Cast<USMGraphK2Node_TransitionPreEvaluateNode>(RuntimeReferenceNode))
 		{
@@ -1089,8 +1101,19 @@ void FSMKismetCompilerContext::ProcessPropertyNodes()
 
 	for (USMGraphK2Node_PropertyNode_Base* PropertyNode : PropertyNodes)
 	{
+		// Map the specific property by Guid and store under the template instance. This is needed so during CDO construction
+		// the template property will map to the correct property on the CDO.
+
+		USMNodeInstance* NodeTemplate = PropertyNode->GetOwningTemplate();
+		if (!NodeTemplate)
+		{
+			MessageLog.Error(TEXT("Node template not found for node @@."), PropertyNode);
+			return;
+		}
+
 		FSMGraphProperty_Base* GraphProperty = PropertyNode->GetPropertyNodeChecked();
 		const FGuid OldGuid = GraphProperty->GetGuid();
+		
 		if (!GraphProperty->ShouldGenerateGuidFromVariable())
 		{
 			GraphProperty->GenerateNewGuid();
@@ -1105,16 +1128,6 @@ void FSMKismetCompilerContext::ProcessPropertyNodes()
 		}
 		
 		SetupPropertyEntry(PropertyNode, NewProperty);
-
-		// Map the specific property by Guid and store under the template instance. This is needed so during CDO construction
-		// the template property will map to the correct property on the CDO.
-		
-		USMNodeInstance* NodeTemplate = PropertyNode->GetOwningTemplate();
-		if(!NodeTemplate)
-		{
-			MessageLog.Error(TEXT("Node template not found for node @@."), PropertyNode);
-			return;
-		}
 
 		TMap<FGuid, USMGraphK2Node_Base*>& GraphProperties = MappedTemplatesToNodeProperties.FindOrAdd(NodeTemplate);
 		ensure(!GraphProperties.Contains(GraphProperty->GetGuid()));
@@ -1299,7 +1312,7 @@ USMGraphK2Node_StateMachineEntryNode* FSMKismetCompilerContext::ProcessNestedSta
 		if (USMInstance* Template = StateMachineStateNode->GetStateMachineReferenceTemplateDirect())
 		{
 			// Store a template if it exists. We will deep copy it to the CDO later.
-			DefaultObjectTemplates.Add(StateMachineNode->GetNodeGuid(), Template);
+			AddDefaultObjectTemplate(StateMachineNode->GetNodeGuid(), Template, FTemplateContainer::ETemplateType::ReferenceTemplate);
 		}
 	}
 
@@ -1440,12 +1453,23 @@ UK2Node_CustomEvent* FSMKismetCompilerContext::SetupPropertyEntry(USMGraphK2Node
 
 			VariableInputPin->CopyPersistentDataFromOldPin(*VariableDataPin);
 		}
+
+		USMNodeInstance* OwningTemplate = PropertyNode->GetOwningTemplate();
+		check(OwningTemplate);
 		
+		// TODO: Handle stack instances. Need to be able to look up by guid or index. Currently just "NodeInstance" is retrieved in a getter.
 		USMGraphK2Node_StateReadNode_GetNodeInstance* GetNodeInstance = SpawnIntermediateNode<USMGraphK2Node_StateReadNode_GetNodeInstance>(PropertyNode, ConsolidatedEventGraph);
 		GetNodeInstance->ContainerOwnerGuid = PropertyNode->ContainerOwnerGuid;
 		GetNodeInstance->RuntimeNodeGuid = PropertyNode->RuntimeNodeGuid;
+		GetNodeInstance->NodeInstanceGuid = PropertyNode->GetPropertyNodeConstChecked()->GetGuid();
 
-		GetNodeInstance->AllocatePinsForType(PropertyNode->GetOwningTemplate()->GetClass());
+		if (USMGraphNode_StateNode* StateNode = Cast<USMGraphNode_StateNode>(PropertyNode->GetOwningGraphNode()))
+		{
+			// This may be part of a state stack template. Store the index so it can be retrieved in GetNodeInstance.
+			GetNodeInstance->NodeInstanceIndex = StateNode->GetIndexOfTemplate(OwningTemplate->GetTemplateGuid());
+		}
+		
+		GetNodeInstance->AllocatePinsForType(OwningTemplate->GetClass());
 		Schema->TryCreateConnection(GetNodeInstance->GetOutputPin(), SelfPin);
 	}
 	else
@@ -1533,11 +1557,6 @@ UK2Node_StructMemberSet* FSMKismetCompilerContext::CreateSetter(UK2Node* WriteNo
 
 	for (UEdGraphPin* NewPin : VarSetNode->Pins)
 	{
-		if (NewPin->PinType.IsContainer())
-		{
-			continue;
-		}
-
 		// First attempt to find desired pin from the setter.
 		UEdGraphPin** OriginalPin = WriteNode->Pins.FindByPredicate([&](const UEdGraphPin* Pin)
 		{
@@ -1676,6 +1695,12 @@ FStructProperty* FSMKismetCompilerContext::CreateRuntimeProperty(USMGraphK2Node_
 	AllocatedNodePropertiesToNodes.Add(NewProperty, PropertyNode);
 
 	return NewProperty;
+}
+
+void FSMKismetCompilerContext::AddDefaultObjectTemplate(const FGuid& RuntimeGuid, UObject* Template, FTemplateContainer::ETemplateType TemplateType, FGuid TemplateGuid)
+{
+	TArray<FTemplateContainer>& Templates = DefaultObjectTemplates.FindOrAdd(RuntimeGuid);
+	Templates.AddUnique(FTemplateContainer(Template, TemplateType, TemplateGuid));
 }
 
 FName FSMKismetCompilerContext::CreateFunctionName(USMGraphK2Node_RootNode* GraphNode, FSMNode_Base* RuntimeNode)

@@ -13,7 +13,8 @@
 #include "Widgets/SWidget.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/SInlineEditableTextBlock.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
+#include "SMConduit.h"
 #include "Configuration/SMEditorStyle.h"
 #include "Graph/Nodes/SMGraphNode_StateNode.h"
 #include "Graph/Nodes/SMGraphNode_ConduitNode.h"
@@ -22,7 +23,7 @@
 #include "Graph/Nodes/SMGraphNode_StateMachineStateNode.h"
 #include "Graph/Nodes/SMGraphNode_StateMachineParentNode.h"
 #include "Widgets/SSMGraphProperty.h"
-#include "SMNodeInstanceUtils.h"
+#include "Utilities/SMNodeInstanceUtils.h"
 
 #define LOCTEXT_NAMESPACE "SGraphStateNode"
 
@@ -31,6 +32,8 @@ void SGraphNode_StateNode::Construct(const FArguments& InArgs, USMGraphNode_Stat
 {
 	GraphNode = InNode;
 	ContentPadding = InArgs._ContentPadding;
+	CastChecked<USMGraphNode_Base>(GraphNode)->OnWidgetConstruct();
+	
 	UpdateGraphNode();
 	SetCursor(EMouseCursor::CardinalCross);
 
@@ -465,72 +468,218 @@ TSharedPtr<SVerticalBox> SGraphNode_StateNode::CreateContentBox()
 	PropertyWidgets.Reset();
 	
 	// Add custom property widgets sorted by user specification.
-	USMGraphNode_Base* Node = CastChecked<USMGraphNode_Base>(GraphNode);
-	TArray<USMGraphK2Node_PropertyNode_Base*> GraphPropertyNodes = Node->GetAllPropertyGraphNodesAsArray();
-
+	USMGraphNode_StateNodeBase* StateNodeBase = CastChecked<USMGraphNode_StateNodeBase>(GraphNode);
+	TArray<USMGraphK2Node_PropertyNode_Base*> GraphPropertyNodes = StateNodeBase->GetAllPropertyGraphNodesAsArray();
 	TArray<USMGraphK2Node_PropertyNode_Base*> GraphPropertyBPVariablesOrdered;
-	if(UBlueprint* NodeBlueprint = UBlueprint::GetBlueprintFromClass(Node->GetNodeClass()))
-	{
-		for(const FBPVariableDescription& Variable : NodeBlueprint->NewVariables)
-		{
-			FSMGraphProperty_Base Property;
-			const FGuid& CalculatedGuid = Property.SetGuid(Variable.VarGuid, 0);
+	// Each property node mapped to its instance.
+	TMap<USMGraphK2Node_PropertyNode_Base*, USMNodeInstance*> PropertiesToTemplates;
+	
+	// Populate all used state classes, in order.
+	TArray<USMNodeInstance*> NodeTemplates;
 
-			// First lookup by var guid. This is the standard lookup.
-			USMGraphK2Node_PropertyNode_Base* GraphProperty = Node->GetGraphPropertyNode(CalculatedGuid);
-			
-			// Attempt lookup by name -- Only can happen on extended graph properties.
-			if(!GraphProperty)
+	auto IsValidClass = [](USMGraphNode_Base* Node, UClass* NodeClass) {return NodeClass && NodeClass != Node->GetDefaultNodeClass(); };
+
+	if (IsValidClass(StateNodeBase, StateNodeBase->GetNodeClass()))
+	{
+		NodeTemplates.Add(StateNodeBase->GetNodeTemplate());
+	}
+	
+	if (USMGraphNode_StateNode* StateNode = Cast<USMGraphNode_StateNode>(StateNodeBase))
+	{
+		for (const auto& StackTemplate : StateNode->StateStack)
+		{
+			if (StackTemplate.NodeStackInstanceTemplate)
 			{
-				GraphProperty = Node->GetGraphPropertyNode(Variable.VarName);
+				if (IsValidClass(StateNodeBase, StackTemplate.NodeStackInstanceTemplate->GetClass()))
+				{
+					NodeTemplates.Add(StackTemplate.NodeStackInstanceTemplate);
+				}
+			}
+		}
+	}
+
+	/*
+	 * Look for array types and build out templates.
+	 */
+	auto ExpandAndSortProperty = [&GraphPropertyNodes, &GraphPropertyBPVariablesOrdered, &PropertiesToTemplates](USMGraphK2Node_PropertyNode_Base* GraphProperty, USMNodeInstance* NodeTemplate)
+	{
+		if (GraphProperty)
+		{
+			GraphPropertyNodes.Remove(GraphProperty);
+			GraphPropertyBPVariablesOrdered.Add(GraphProperty);
+
+			FSMGraphProperty_Base* RealPropertyNode = GraphProperty->GetPropertyNode();
+			if (!RealPropertyNode)
+			{
+				return false;
+			}
+
+			// Look for array items that may belong to this property.
+			TArray<USMGraphK2Node_PropertyNode_Base*> ArrayItems = GraphPropertyNodes.
+				FilterByPredicate([&RealPropertyNode](USMGraphK2Node_PropertyNode_Base* PropertyNode)
+			{
+				FSMGraphProperty_Base* TestProperty = PropertyNode->GetPropertyNodeConst();
+				if (!TestProperty)
+				{
+					return false;
+				}
+				return TestProperty->VariableName == RealPropertyNode->VariableName && TestProperty->GetTemplateGuid() == RealPropertyNode->GetTemplateGuid();
+			});
+			ArrayItems.Sort([&](USMGraphK2Node_PropertyNode_Base& lhs, USMGraphK2Node_PropertyNode_Base& rhs)
+			{
+				// Should never be null unless something was forcibly deleted or an underlying class removed.
+				FSMGraphProperty_Base* PropertyLhs = lhs.GetPropertyNode();
+				if (!PropertyLhs)
+				{
+					return false;
+				}
+
+				FSMGraphProperty_Base* PropertyRhs = rhs.GetPropertyNode();
+				if (!PropertyRhs)
+				{
+					return false;
+				}
+
+				return PropertyLhs->ArrayIndex <= PropertyRhs->ArrayIndex;
+			});
+
+			// Add on array items in the correct order directly after the first element.
+			for (USMGraphK2Node_PropertyNode_Base* ArrItem : ArrayItems)
+			{
+				GraphPropertyNodes.Remove(ArrItem);
+				PropertiesToTemplates.Add(ArrItem, NodeTemplate);
 			}
 			
-			if(GraphProperty)
-			{
-				GraphPropertyNodes.Remove(GraphProperty);
-				GraphPropertyBPVariablesOrdered.Add(GraphProperty);
+			GraphPropertyBPVariablesOrdered.Append(ArrayItems);
+			PropertiesToTemplates.Add(GraphProperty, NodeTemplate);
+			
+			return true;
+		}
 
-				FSMGraphProperty_Base* RealPropertyNode = GraphProperty->GetPropertyNode();
-				if(!RealPropertyNode)
+		return false;
+	};
+	
+	for (USMNodeInstance* NodeTemplate : NodeTemplates)
+	{
+		{
+			// Check native properties first. Reference PropertyEditor/Private/PropertyEditorHelpers.cpp  ~ OrderPropertiesFromMetadata()
+			
+			TArray<FProperty*> NativeProperties;
+			TArray<TTuple<FProperty*, int32>> NativePropertiesOrdered;
+			for (TFieldIterator<FProperty> It(NodeTemplate->GetClass()); It; ++It)
+			{
+				FProperty* NativeProperty = *It;
+				if (!NativeProperty->GetOwnerUField()->HasAnyInternalFlags(EInternalObjectFlags::Native) ||
+					(!FSMNodeInstanceUtils::IsPropertyExposedToGraphNode(NativeProperty) && !FSMNodeInstanceUtils::IsPropertyGraphProperty(NativeProperty)))
 				{
+					// Blueprint properties checked later.
 					continue;
 				}
 
-				// Look for array items that may belong to this property.
-				TArray<USMGraphK2Node_PropertyNode_Base*> ArrayItems = GraphPropertyNodes.
-					FilterByPredicate([&RealPropertyNode](USMGraphK2Node_PropertyNode_Base* PropertyNode)
-					{
-						FSMGraphProperty_Base* TestProperty = PropertyNode->GetPropertyNodeConst();
-						if (!TestProperty)
-						{
-							return false;
-						}
-						return TestProperty->VariableName == RealPropertyNode->VariableName;
-					});
-				ArrayItems.Sort([&](USMGraphK2Node_PropertyNode_Base& lhs, USMGraphK2Node_PropertyNode_Base& rhs)
+				NativeProperties.Add(NativeProperty);
+			}
+
+			NativePropertiesOrdered.Reserve(NativeProperties.Num());
+			for (FProperty* NativeProperty : NativeProperties)
+			{
+				// Sort native properties based on their display order only.
+				const FString& DisplayPriorityStr = NativeProperty->GetMetaData("DisplayPriority");
+				int32 DisplayPriority = (DisplayPriorityStr.IsEmpty() ? MAX_int32 : FCString::Atoi(*DisplayPriorityStr));
+				if (DisplayPriority == 0 && !FCString::IsNumeric(*DisplayPriorityStr))
 				{
-					// Should never be null unless something was forcibly deleted or an underlying class removed.
-					FSMGraphProperty_Base* PropertyLhs = lhs.GetPropertyNode();
-					if (!PropertyLhs)
-					{
-						return false;
-					}
-
-					FSMGraphProperty_Base* PropertyRhs = rhs.GetPropertyNode();
-					if (!PropertyRhs)
-					{
-						return false;
-					}
-
-					return PropertyLhs->ArrayIndex <= PropertyRhs->ArrayIndex;
-				});
-
-				// Add on array items in the correct order directly after the first element.
-				for(USMGraphK2Node_PropertyNode_Base* ArrItem : ArrayItems)
-				{
-					GraphPropertyNodes.Remove(ArrItem);
+					// If there was a malformed display priority str Atoi will say it is 0, but we want to treat it as unset
+					DisplayPriority = MAX_int32;
 				}
-				GraphPropertyBPVariablesOrdered.Append(ArrayItems);
+
+				auto InsertProperty = [NativeProperty, DisplayPriority](TArray<TTuple<FProperty*, int32>>& InsertToArray)
+				{
+					bool bInserted = false;
+					if (DisplayPriority != MAX_int32)
+					{
+						for (int32 InsertIndex = 0; InsertIndex < InsertToArray.Num(); ++InsertIndex)
+						{
+							const int32 PriorityAtIndex = InsertToArray[InsertIndex].Get<1>();
+							if (DisplayPriority < PriorityAtIndex)
+							{
+								InsertToArray.Insert(MakeTuple(NativeProperty, DisplayPriority), InsertIndex);
+								bInserted = true;
+								break;
+							}
+						}
+					}
+
+					if (!bInserted)
+					{
+						InsertToArray.Emplace(MakeTuple(NativeProperty, DisplayPriority));
+					}
+				};
+
+				InsertProperty(NativePropertiesOrdered);
+			}
+
+			// Reload back into array.
+			NativeProperties.Reset();
+			for (const TTuple<FProperty*, int32>& Property : NativePropertiesOrdered)
+			{
+				NativeProperties.Add(Property.Get<0>());
+			}
+
+			for (FProperty* NativeProperty : NativeProperties)
+			{
+				FSMGraphProperty_Base Property;
+				Property.SetTemplateGuid(NodeTemplate->GetTemplateGuid());
+				FSMNodeInstanceUtils::SetGraphPropertyFromProperty(Property, NativeProperty, NodeTemplate);
+
+				const FGuid& CalculatedGuid = Property.GetGuid();
+
+				// First lookup by var guid. This is the standard lookup.
+				USMGraphK2Node_PropertyNode_Base* GraphProperty = StateNodeBase->GetGraphPropertyNode(CalculatedGuid);
+
+				// Attempt lookup by name -- Only can happen on extended graph properties.
+				if (!GraphProperty)
+				{
+					// TODO: This may not be necessary, at least for native properties.
+					GraphProperty = StateNodeBase->GetGraphPropertyNode(NativeProperty->GetFName(), NodeTemplate);
+				}
+
+				if (!ExpandAndSortProperty(GraphProperty, NodeTemplate))
+				{
+					continue;
+				}
+			}
+		}
+
+		// Blueprint variable sorting. Grab the blueprint and all parents.
+		{
+			TArray<UBlueprint*> BlueprintParents;
+			UBlueprint::GetBlueprintHierarchyFromClass(NodeTemplate->GetClass(), BlueprintParents);
+
+			TArray<FBPVariableDescription> Variables;
+			for (UBlueprint* Blueprint : BlueprintParents)
+			{
+				Variables.Append(Blueprint->NewVariables);
+			}
+
+			// Check blueprint properties.
+			for (const FBPVariableDescription& Variable : Variables)
+			{
+				FSMGraphProperty_Base Property;
+				Property.SetTemplateGuid(NodeTemplate->GetTemplateGuid());
+				const FGuid& CalculatedGuid = Property.SetGuid(Variable.VarGuid, 0);
+
+				// First lookup by var guid. This is the standard lookup.
+				USMGraphK2Node_PropertyNode_Base* GraphProperty = StateNodeBase->GetGraphPropertyNode(CalculatedGuid);
+
+				// Attempt lookup by name -- Only can happen on extended graph properties.
+				if (!GraphProperty)
+				{
+					GraphProperty = StateNodeBase->GetGraphPropertyNode(Variable.VarName, NodeTemplate);
+				}
+
+				if (!ExpandAndSortProperty(GraphProperty, NodeTemplate))
+				{
+					continue;
+				}
 			}
 		}
 	}
@@ -539,28 +688,41 @@ TSharedPtr<SVerticalBox> SGraphNode_StateNode::CreateContentBox()
 	GraphPropertyNodes.Append(GraphPropertyBPVariablesOrdered);
 
 	TMap<int32, TArray<USMGraphK2Node_PropertyNode_Base*>> CustomOrderMap;
-	// Perform custom sorting.
-	for (USMGraphK2Node_PropertyNode_Base* PropertyNode : GraphPropertyNodes)
 	{
-		if(FSMGraphProperty_Base* Property = PropertyNode->GetPropertyNode())
+		// Perform custom sorting using widget vertical order override. Maintain the desired order accounting for combined states.
+		// TODO: Consider deprecating the vertical order attribute in favor or DisplayOrder (native) or variable order in BP. Both already work.
+		int32 BaseCount = 0;
+		int32 TotalCount = 0;
+		USMNodeInstance* LastTemplate = nullptr;
+		for (USMGraphK2Node_PropertyNode_Base* PropertyNode : GraphPropertyNodes)
 		{
-			const int32 Order = Property->GetVerticalDisplayOrder();
-			if(Order != 0)
+			USMNodeInstance* CurrentTemplate = PropertiesToTemplates.FindRef(PropertyNode);
+			if (CurrentTemplate && CurrentTemplate != LastTemplate && CurrentTemplate->GetTemplateGuid().IsValid())
 			{
-				// Look for all related elements since this could be an array that is being re-ordered.
-				TArray<USMGraphK2Node_PropertyNode_Base*> PropertiesToMove = GraphPropertyNodes.
-					FilterByPredicate([&Property](USMGraphK2Node_PropertyNode_Base* PropertyNode)
+				BaseCount = TotalCount;
+			}
+			TotalCount++;
+			LastTemplate = CurrentTemplate;
+
+			if (FSMGraphProperty_Base* Property = PropertyNode->GetPropertyNode())
+			{
+				const int32 Order = Property->GetVerticalDisplayOrder();
+				if (Order != 0)
 				{
-					FSMGraphProperty_Base* TestProperty = PropertyNode->GetPropertyNodeConst();
-					if (!TestProperty)
+					// Look for all related elements since this could be an array that is being re-ordered.
+					TArray<USMGraphK2Node_PropertyNode_Base*> PropertiesToMove = GraphPropertyNodes.
+						FilterByPredicate([&Property](USMGraphK2Node_PropertyNode_Base* PropertyNode)
 					{
-						return false;
-					}
-					return TestProperty->VariableName == Property->VariableName;
-				});
-				
-				
-				CustomOrderMap.Add(Order, PropertiesToMove);
+						FSMGraphProperty_Base* TestProperty = PropertyNode->GetPropertyNodeConst();
+						if (!TestProperty)
+						{
+							return false;
+						}
+						return TestProperty->VariableName == Property->VariableName && TestProperty->GetTemplateGuid() == Property->GetTemplateGuid();
+					});
+
+					CustomOrderMap.Add(BaseCount + Order, PropertiesToMove);
+				}
 			}
 		}
 	}
@@ -584,20 +746,46 @@ TSharedPtr<SVerticalBox> SGraphNode_StateNode::CreateContentBox()
 			GraphPropertyNodes.Insert(PropertyNodes, Index);
 		}
 	}
-	
+
+	USMNodeInstance* LastTemplate = nullptr;
+	TSharedPtr<SBorder> NodeStackBorder;
+	TSharedPtr<SVerticalBox> NodeStackBox;
 	for (USMGraphK2Node_PropertyNode_Base* PropertyNode : GraphPropertyNodes)
 	{
 		if (TSharedPtr<SSMGraphProperty_Base> PropertyWidget = PropertyNode->GetGraphNodeWidget())
 		{
 			// Must call finalize on these after the context box has been created and assigned.
 			PropertyWidgets.Add(PropertyWidget, PropertyNode);
-			
-			Content->AddSlot()
+
+			USMNodeInstance* CurrentTemplate = PropertiesToTemplates.FindRef(PropertyNode);
+			if (CurrentTemplate && CurrentTemplate != LastTemplate && CurrentTemplate->GetTemplateGuid().IsValid())
+			{
+				FLinearColor BackgroundColor = StateNodeBase->GetBackgroundColorForNodeInstance(CurrentTemplate);
+				BackgroundColor.A *= 0.25f;
+				
+				Content->AddSlot()
+					.AutoHeight()
+					[
+						SAssignNew(NodeStackBorder, SBorder)
+						.BorderImage(FEditorStyle::GetBrush("Graph.StateNode.Body"))
+						.Padding(2)
+						.BorderBackgroundColor(BackgroundColor)
+						[
+							SAssignNew(NodeStackBox, SVerticalBox)
+						]
+					];
+			}
+
+			TSharedPtr<SVerticalBox> ContentBoxToUse = NodeStackBox.IsValid() ? NodeStackBox : Content;
+
+			ContentBoxToUse->AddSlot()
 				.Padding(0.f, 2.5f)
 				.AutoHeight()
 				[
 					StaticCastSharedRef<SWidget>(PropertyWidget.ToSharedRef())
 				];
+
+			LastTemplate = CurrentTemplate;
 		}
 	}
 	
@@ -621,7 +809,6 @@ const FSlateBrush* SGraphNode_StateNode::GetNameIcon() const
 	return FEditorStyle::GetBrush(TEXT("Graph.StateNode.Icon"));
 }
 
-#undef LOCTEXT_NAMESPACE
 
 void SGraphNode_ConduitNode::Construct(const FArguments& InArgs, USMGraphNode_ConduitNode* InNode)
 {
@@ -631,6 +818,21 @@ void SGraphNode_ConduitNode::Construct(const FArguments& InArgs, USMGraphNode_Co
 	Args.ContentPadding(EditorSettings->StateContentPadding);
 	
 	SGraphNode_StateNode::Construct(Args, InNode);
+}
+
+void SGraphNode_ConduitNode::GetNodeInfoPopups(FNodeInfoContext* Context, TArray<FGraphInformationPopupInfo>& Popups) const
+{
+	USMGraphNode_ConduitNode* Node = CastChecked<USMGraphNode_ConduitNode>(GraphNode);
+	if (const FSMConduit* DebugNode = (FSMConduit*)Node->GetDebugNode())
+	{
+		if (Node->ShouldEvalWithTransitions() && Node->WasEvaluating())
+		{
+			// Transition evaluation, don't show active information.
+			return;
+		}
+	}
+	
+	SGraphNode_StateNode::GetNodeInfoPopups(Context, Popups);
 }
 
 const FSlateBrush* SGraphNode_ConduitNode::GetNameIcon() const
@@ -643,3 +845,5 @@ const FSlateBrush* SGraphNode_ConduitNode::GetNameIcon() const
 	
 	return FEditorStyle::GetBrush(TEXT("Graph.ConduitNode.Icon"));
 }
+
+#undef LOCTEXT_NAMESPACE

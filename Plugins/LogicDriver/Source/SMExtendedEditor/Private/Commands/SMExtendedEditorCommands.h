@@ -16,7 +16,7 @@ public:
 	}
 
 	// TCommand
-	void RegisterCommands() override;
+	virtual void RegisterCommands() override;
 	FORCENOINLINE static const FSMExtendedEditorCommands& Get();
 	// ~TCommand
 

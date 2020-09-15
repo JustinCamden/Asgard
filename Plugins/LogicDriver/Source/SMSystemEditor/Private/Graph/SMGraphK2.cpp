@@ -1,7 +1,7 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "SMGraphK2.h"
 #include "Nodes/RootNodes/SMGraphK2Node_RootNode.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 
 
 USMGraphK2::USMGraphK2(const FObjectInitializer& ObjectInitializer)

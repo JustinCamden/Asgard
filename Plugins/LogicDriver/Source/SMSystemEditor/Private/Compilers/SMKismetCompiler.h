@@ -4,9 +4,9 @@
 #include "Kismet2/CompilerResultsLog.h"
 #include "KismetCompilerModule.h"
 #include "KismetCompiler.h"
-#include "SMBlueprint.h"
+#include "Blueprints/SMBlueprint.h"
 #include "K2Node_CustomEvent.h"
-#include "SMBlueprintGeneratedClass.h"
+#include "Blueprints/SMBlueprintGeneratedClass.h"
 #include "SMNode_Base.h"
 
 
@@ -22,13 +22,39 @@ class USMGraphK2Node_StateMachineNode;
 class USMGraphK2Node_StateMachineEntryNode;
 
 
+struct FTemplateContainer
+{
+	enum ETemplateType
+	{
+		NodeTemplate,
+		ReferenceTemplate,
+		StackTemplate
+	};
+
+	FTemplateContainer(UObject* InTemplate, ETemplateType InType, FGuid Guid = FGuid::NewGuid())
+	{
+		Template = InTemplate;
+		TemplateType = InType;
+		TemplateGuid = Guid;
+	}
+
+	bool operator==(const FTemplateContainer& Other) const
+	{
+		return this->Template == Other.Template && this->TemplateGuid == Other.TemplateGuid && this->TemplateType == Other.TemplateType;
+	}
+	
+	UObject* Template;
+	ETemplateType TemplateType;
+	FGuid TemplateGuid;
+};
+
 class FSMKismetCompiler : public IBlueprintCompiler
 {
 public:
 	/** IBlueprintCompiler interface */
-	bool CanCompile(const UBlueprint* Blueprint) override;
-	void Compile(UBlueprint* Blueprint, const FKismetCompilerOptions& CompileOptions, FCompilerResultsLog& Results) override;
-	bool GetBlueprintTypesForClass(UClass* ParentClass, UClass*& OutBlueprintClass, UClass*& OutBlueprintGeneratedClass) const override;
+	virtual bool CanCompile(const UBlueprint* Blueprint) override;
+	virtual void Compile(UBlueprint* Blueprint, const FKismetCompilerOptions& CompileOptions, FCompilerResultsLog& Results) override;
+	virtual bool GetBlueprintTypesForClass(UClass* ParentClass, UClass*& OutBlueprintClass, UClass*& OutBlueprintGeneratedClass) const override;
 	/** ~IBlueprintCompiler interface */
 };
 
@@ -42,13 +68,13 @@ public:
 
 protected:
 	// FKismetCompilerContext interface
-	void MergeUbergraphPagesIn(UEdGraph* Ubergraph) override;
-	void SpawnNewClass(const FString& NewClassName) override;
-	void OnNewClassSet(UBlueprintGeneratedClass* ClassToUse) override;
-	void CleanAndSanitizeClass(UBlueprintGeneratedClass* ClassToClean, UObject*& InOldCDO) override;
-	void CopyTermDefaultsToDefaultObject(UObject* DefaultObject) override;
-	void PreCompile() override;
-	void PostCompile() override;
+	virtual void MergeUbergraphPagesIn(UEdGraph* Ubergraph) override;
+	virtual void SpawnNewClass(const FString& NewClassName) override;
+	virtual void OnNewClassSet(UBlueprintGeneratedClass* ClassToUse) override;
+	virtual void CleanAndSanitizeClass(UBlueprintGeneratedClass* ClassToClean, UObject*& InOldCDO) override;
+	virtual void CopyTermDefaultsToDefaultObject(UObject* DefaultObject) override;
+	virtual void PreCompile() override;
+	virtual void PostCompile() override;
 	// ~FKismetCompilerContext interface
 
 	/** Locate the selected state machine. */
@@ -118,7 +144,10 @@ public:
 
 	/** Creates a runtime property for a property node. */
 	FStructProperty* CreateRuntimeProperty(class USMGraphK2Node_PropertyNode_Base* PropertyNode);
-	
+
+	/** Add a template to the list for the specified runtime guid. TemplateGuid only needed for state stack templates. */
+	void AddDefaultObjectTemplate(const FGuid& RuntimeGuid, UObject* Template, FTemplateContainer::ETemplateType TemplateType, FGuid TemplateGuid = FGuid());
+
 	/** Create a unique function name which can be used during run-time. */
 	static FName CreateFunctionName(USMGraphK2Node_RootNode* GraphNode, FSMNode_Base* RuntimeNode);
 	static FName CreateFunctionName(USMGraphK2Node_RootNode* GraphNode, FSMGraphProperty_Base* PropertyNode);
@@ -130,6 +159,7 @@ protected:
 	
 protected:
 	friend class USMGraphNode_Base;
+	friend class USMGraphNode_StateNode;
 	
 	/** Generated blueprint class which will contain the state machine template. */
 	USMBlueprintGeneratedClass* NewSMBlueprintClass;
@@ -141,7 +171,7 @@ protected:
 	TMap<FGuid, USMGraphK2Node_RuntimeNodeContainer*> MappedContainerNodes;
 
 	/** Runtime NodeGuid mapped to instance templates still owned by their state graph node. */
-	TMap<FGuid, UObject*> DefaultObjectTemplates;
+	TMap<FGuid, TArray<FTemplateContainer>> DefaultObjectTemplates;
 
 	/** Node templates mapped to graph property guids mapped to their nodes. Used for setting graph properties in the instance templates stored in the CDO. */
 	TMap<UObject*, TMap<FGuid, class USMGraphK2Node_Base*>> MappedTemplatesToNodeProperties;

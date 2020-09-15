@@ -39,22 +39,26 @@ public:
 	void OnStateEnd();
 
 	/** Called when the immediate owning state machine blueprint is starting. If this is part of a reference
-	 * then it will be called when the reference starts. */
+	 * then it will be called when the reference starts. If this is for a state machine node
+	 * then it will only be called when the top level state machine starts.*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Logic Driver|Node Instance")
 	void OnRootStateMachineStart();
 
 	/** Called when the immediate owning state machine blueprint is stopping. If this is part of a reference
-	 * then it will be called when the reference stops. */
+	 * then it will be called when the reference stops. If this is for a state machine node
+	 * then it will only be called when the top level state machine stops.*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Logic Driver|Node Instance")
 	void OnRootStateMachineStop();
+	
+	// USMNodeInstance
+	/** If this state is an end state. */
+	virtual bool IsInEndState() const override;
+	// ~USMNodeInstance
 	
 	/** Return read only information about the owning state. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
 	void GetStateInfo(FSMStateInfo& State) const;
-
-	/** If this state is an end state. */
-	bool IsInEndState() const override;
-
+	
 	/** Checks if this state is a state machine. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
 	bool IsStateMachine() const;
@@ -107,6 +111,15 @@ public:
 	bool SwitchToLinkedState(USMStateInstance_Base* NextStateInstance, bool bRequireTransitionToPass = true);
 
 	/**
+	 * Return a transition given the transition index.
+	 * @param Index The array index of the transition. If transitions have manual priorities they should correlate with the index value.
+	 *
+	 * @return The transition or nullptr.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
+	USMTransitionInstance* GetTransitionByIndex(int32 Index) const;
+	
+	/**
 	 * Return the next connected state given a transition index.
 	 * @param Index The array index of the transition. If transitions have manual priorities they should correlate with the index value.
 	 *
@@ -142,6 +155,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Graph Properties", AdvancedDisplay, meta = (InstancedTemplate, HideOnNode, EditCondition = "bAutoEvalExposedProperties", DisplayName = "Auto Eval on End"))
 	bool bEvalGraphsOnEnd;
 
+	/**
+	 * Should graph properties evaluate during the state's initialize sequence.
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Graph Properties", AdvancedDisplay, meta = (InstancedTemplate, HideOnNode, EditCondition = "bAutoEvalExposedProperties", DisplayName = "Auto Eval on Initialize"))
+	bool bEvalGraphsOnInitialize;
+	
 	/**
 	 * Should graph properties evaluate when the root state machine starts.
 	 */
@@ -199,7 +218,7 @@ public:
 	/**
 	 * Always update the state at least once before ending.
 	 */
-	UPROPERTY(EditDefaultsOnly, Category = "State")
+	UPROPERTY(EditDefaultsOnly, Category = "State", meta = (NodeBaseOnly))
 	bool bAlwaysUpdate;
 
 	/**
@@ -207,19 +226,19 @@ public:
 	 * This is good to use if the transitions leading out of the state are event based
 	 * or if you are manually calling EvaluateTransitions from a state instance.
 	 */
-	UPROPERTY(EditDefaultsOnly, Category = "State")
+	UPROPERTY(EditDefaultsOnly, Category = "State", meta = (NodeBaseOnly))
 	bool bDisableTickTransitionEvaluation;
 
 	/** Sets all current and future transitions from this state to run in parallel. Conduit nodes are not supported. */
-	UPROPERTY(EditDefaultsOnly, Category = "Parallel States")
+	UPROPERTY(EditDefaultsOnly, Category = "Parallel States", meta = (NodeBaseOnly))
 	bool bDefaultToParallel;
 	
 	/** If this state can be reentered from a parallel state if this state is already active. This will not call On State End but will call On State Begin. */
-	UPROPERTY(EditDefaultsOnly, Category = "Parallel States")
+	UPROPERTY(EditDefaultsOnly, Category = "Parallel States", meta = (NodeBaseOnly))
 	bool bAllowParallelReentry;
 
 	/** If the state should remain active even after a transition is taken from this state. */
-	UPROPERTY(EditDefaultsOnly, Category = "Parallel States")
+	UPROPERTY(EditDefaultsOnly, Category = "Parallel States", meta = (NodeBaseOnly))
 	bool bStayActiveOnStateChange;
 	
 	/**
@@ -233,14 +252,14 @@ public:
 
 	 * Individual transitions can modify this behavior with bCanEvalWithStartState.
 	 */
-	UPROPERTY(EditDefaultsOnly, AdvancedDisplay, Category = "State")
+	UPROPERTY(EditDefaultsOnly, AdvancedDisplay, Category = "State", meta = (NodeBaseOnly))
 	bool bEvalTransitionsOnStart;
 
 	/**
 	 * Prevents the `Any State` node from adding transitions to this node.
 	 * This can be useful for maintaining end states.
 	 */
-	UPROPERTY(EditDefaultsOnly, Category = "State")
+	UPROPERTY(EditDefaultsOnly, Category = "State", meta = (NodeBaseOnly))
 	bool bExcludeFromAnyState;
 
 	/** Called right before the state has started. */
@@ -257,7 +276,7 @@ public:
 };
 
 /**
- * The base class for state nodes.
+ * The base class for state nodes. This is where most execution logic should be defined.
  */
 UCLASS(Blueprintable, BlueprintType, classGroup = "State Machine", hideCategories = (SMStateInstance), meta = (DisplayName = "State Class"))
 class SMSYSTEM_API USMStateInstance : public USMStateInstance_Base
@@ -267,5 +286,65 @@ class SMSYSTEM_API USMStateInstance : public USMStateInstance_Base
 public:
 	USMStateInstance();
 
-};
+	/** Called before OnStateBegin and before transitions are initialized. */
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Logic Driver|Node Instance")
+	void OnStateInitialized();
 
+	/** Called after OnStateEnd and after transitions are shutdown. */
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Logic Driver|Node Instance")
+	void OnStateShutdown();
+	
+	/**
+	 * Retrieve all state instances in the state stack.
+	 *
+	 * @param StateStackInstances [Out] State stack instances in their correct order.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
+	void GetAllStateStackInstances(TArray<USMStateInstance_Base*>& StateStackInstances) const;
+	
+	/**
+	 * Retrieve a state instance from within the state stack.
+	 * 
+	 * @param Index the index of the array.
+	 * @return the state if the index is valid.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
+	USMStateInstance_Base* GetStateInStack(int32 Index) const;
+
+	/**
+	 * Retrieve the first stack instance of a given class.
+	 *
+	 * @param StateClass The state class to search for.
+	 * @param bIncludeChildren If children of the given class can be included.
+	 * @return the first state that matches the class.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
+	USMStateInstance_Base* GetStateInStackByClass(TSubclassOf<USMStateInstance> StateClass, bool bIncludeChildren = false) const;
+
+	/**
+	 * Retrieve the owning node instance of a state stack. If this is called from the main node instance
+	 * it will return itself.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
+	USMStateInstance_Base* GetStackOwnerInstance() const;
+	
+	/**
+	 * Retrieve all states that match the given class.
+	 *
+	 * @param StateClass The state class to search for.
+	 * @param bIncludeChildren If children of the given class can be included.
+	 * @param StateStackInstances [Out] State stack instances matching the given class.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
+	void GetAllStatesInStackOfClass(TSubclassOf<USMStateInstance> StateClass, TArray<USMStateInstance_Base*>& StateStackInstances, bool bIncludeChildren = false) const;
+	
+	/** The total number of states in the state stack. */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
+	int32 GetStateStackCount() const;
+
+protected:
+	/* Override in native classes to implement. Never call these directly. */
+	
+	virtual void OnStateInitialized_Implementation() {}
+	virtual void OnStateShutdown_Implementation() {}
+};

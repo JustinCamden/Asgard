@@ -24,9 +24,9 @@ class SMSYSTEMEDITOR_API SSMGraphProperty_Base : public SCompoundWidget
 
 	virtual void Finalize() {}
 	virtual void Refresh() {}
-	void OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
-	void OnMouseLeave(const FPointerEvent& MouseEvent) override;
-	FReply OnMouseButtonDoubleClick(const FGeometry& InMyGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+	virtual void OnMouseLeave(const FPointerEvent& MouseEvent) override;
+	virtual FReply OnMouseButtonDoubleClick(const FGeometry& InMyGeometry, const FPointerEvent& InMouseEvent) override;
 
 protected:
 	TSharedPtr<SGraphNode> FindParentGraphNode() const;
@@ -53,13 +53,13 @@ class SMSYSTEMEDITOR_API SSMGraphProperty : public SSMGraphProperty_Base
 	~SSMGraphProperty();
 	
 	void Construct(const FArguments& InArgs);
-	void Finalize() override;
-	
-	FReply OnDragOver(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
-	void OnDragLeave(const FDragDropEvent& DragDropEvent) override;
-	FReply OnDrop(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
+	virtual void Finalize() override;
 
-	void Refresh() override;
+	virtual FReply OnDragOver(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
+	virtual void OnDragLeave(const FDragDropEvent& DragDropEvent) override;
+	virtual FReply OnDrop(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
+
+	virtual void Refresh() override;
 	
 protected:
 	/** Validates that the drag drop event is allowed for this class. */

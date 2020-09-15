@@ -15,7 +15,7 @@ class SMSYSTEMEDITOR_API USMGraphK2Node_Base : public UK2Node
 
 public:
 	// UK2Node
-	ERedirectType DoPinsMatchForReconstruction(const UEdGraphPin* NewPin, int32 NewPinIndex, const UEdGraphPin* OldPin, int32 OldPinIndex) const override;
+	virtual ERedirectType DoPinsMatchForReconstruction(const UEdGraphPin* NewPin, int32 NewPinIndex, const UEdGraphPin* OldPin, int32 OldPinIndex) const override;
 	// ~UK2Node
 	
 	virtual UEdGraphPin* GetInputPin() const;

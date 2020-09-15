@@ -64,14 +64,20 @@ public:
 	virtual uint8* GetResult() const { return nullptr; }
 	virtual void SetResult(uint8* Value) {}
 
+	void InvalidateGuid();
 	const FGuid& SetGuid(const FGuid& NewGuid);
-	const FGuid& SetGuid(const FGuid& NewGuid, int32 Index);
+	const FGuid& SetGuid(const FGuid& NewGuid, int32 Index, bool bCountTemplate = true);
 	const FGuid& GenerateNewGuid();
 	const FGuid& GenerateNewGuidIfNotValid();
 	const FGuid& GetGuid() const { return Guid; }
 	const FGuid& SetOwnerGuid(const FGuid& NewGuid);
 	/** Returns the graph property owner of this node. Likely itself. */
 	const FGuid& GetOwnerGuid() const;
+
+	const FGuid& SetTemplateGuid(const FGuid& NewGuid, bool bRefreshGuid = false);
+	const FGuid& GetTemplateGuid() const { return TemplateGuid; }
+
+	const FGuid& GetUnmodifiedGuid() const { return GuidUnmodified; }
 	
 	/** Used if this class should automatically assign itself to exposed variable properties. */
 	virtual bool ShouldAutoAssignVariable() const { return VariableName != NAME_None; }
@@ -139,10 +145,21 @@ protected:
 	UPROPERTY(meta = (IgnoreForMemberInitializationTest))
 	FGuid Guid;
 
+	/** The guid without the template. */
+	UPROPERTY(meta = (IgnoreForMemberInitializationTest))
+	FGuid GuidUnmodified;
+
 	/** The graph property owner. If this struct is defined within a node class and instanced
 	 * to a state machine then the guid of class CDO is the owner. */
 	UPROPERTY(meta = (IgnoreForMemberInitializationTest))
 	FGuid OwnerGuid;
+
+	/** The guid of the template this belongs to. */
+	UPROPERTY(meta = (IgnoreForMemberInitializationTest))
+	FGuid TemplateGuid;
+
+	UPROPERTY()
+	int32 GuidIndex;
 };
 
 
@@ -158,7 +175,7 @@ public:
 	FSMGraphProperty();
 
 #if WITH_EDITORONLY_DATA
-	int32 GetVerticalDisplayOrder() const override { return WidgetInfo.DisplayOrder; }
+	virtual int32 GetVerticalDisplayOrder() const override { return WidgetInfo.DisplayOrder; }
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Widget")
 	FSMTextDisplayWidgetInfo WidgetInfo;

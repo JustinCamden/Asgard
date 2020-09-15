@@ -4,6 +4,8 @@
 #include "SMConduit.h"
 #include "SMState.h"
 #include "SMTransitionInstance.h"
+#include "SMLogging.h"
+#include "SMUtils.h"
 
 struct TransitionEvaluatorHelper
 {
@@ -17,6 +19,13 @@ struct TransitionEvaluatorHelper
 	{
 		TransitionPtr->UpdateReadStates();
 		TransitionPtr->TransitionPostEvaluateGraphEvaluator.Execute();
+		if (TransitionPtr->bIsEvaluating)
+		{
+			TransitionPtr->bIsEvaluating = false;
+#if WITH_EDITORONLY_DATA
+			TransitionPtr->bWasEvaluating = true; // Will be set to false from the editor.
+#endif
+		}
 	}
 
 	FSMTransition* TransitionPtr;
@@ -32,10 +41,10 @@ void FSMTransition::UpdateReadStates()
 }
 
 FSMTransition::FSMTransition() : Super(), Priority(0), bCanEnterTransition(false), bCanEnterTransitionFromEvent(false),
-                                 bCanEvaluate(true), bCanEvaluateFromEvent(true), bRunParallel(false),
-                                 bEvalIfNextStateActive(true),
-                                 bAlwaysFalse(false), bCanEvalWithStartState(true),
-                                 FromState(nullptr), ToState(nullptr)
+                                 bIsEvaluating(false), bCanEvaluate(true), bCanEvaluateFromEvent(true),
+                                 bRunParallel(false),
+                                 bEvalIfNextStateActive(true), bCanEvalWithStartState(true),
+                                 bAlwaysFalse(false), ConditionalEvaluationType(), FromState(nullptr), ToState(nullptr)
 {
 }
 
@@ -44,14 +53,6 @@ void FSMTransition::Initialize(UObject* Instance)
 	Super::Initialize(Instance);
 	
 	TransitionEnteredGraphEvaluator.Initialize(Instance);
-	for (FSMExposedFunctionHandler& FunctionHandler : TransitionInitializedGraphEvaluators)
-	{
-		FunctionHandler.Initialize(Instance);
-	}
-	for (FSMExposedFunctionHandler& FunctionHandler : TransitionShutdownGraphEvaluators)
-	{
-		FunctionHandler.Initialize(Instance);
-	}
 	TransitionPreEvaluateGraphEvaluator.Initialize(Instance);
 	TransitionPostEvaluateGraphEvaluator.Initialize(Instance);
 }
@@ -60,14 +61,6 @@ void FSMTransition::Reset()
 {
 	Super::Reset();
 	TransitionEnteredGraphEvaluator.Reset();
-	for (FSMExposedFunctionHandler& FunctionHandler : TransitionInitializedGraphEvaluators)
-	{
-		FunctionHandler.Reset();
-	}
-	for (FSMExposedFunctionHandler& FunctionHandler : TransitionShutdownGraphEvaluators)
-	{
-		FunctionHandler.Reset();
-	}
 	TransitionPreEvaluateGraphEvaluator.Reset();
 	TransitionPostEvaluateGraphEvaluator.Reset();
 }
@@ -80,6 +73,31 @@ bool FSMTransition::IsNodeInstanceClassCompatible(UClass* NewNodeInstanceClass) 
 UClass* FSMTransition::GetDefaultNodeInstanceClass() const
 {
 	return USMTransitionInstance::StaticClass();
+}
+
+void FSMTransition::ExecuteInitializeNodes()
+{
+	Super::ExecuteInitializeNodes();
+
+	if (ToState->IsConduit())
+	{
+		ToState->ExecuteInitializeNodes();
+	}
+}
+
+void FSMTransition::ExecuteShutdownNodes()
+{
+	bIsEvaluating = false;
+#if WITH_EDITORONLY_DATA
+	bWasEvaluating = false; // Will be set to false from the editor.
+#endif
+	
+	Super::ExecuteShutdownNodes();
+
+	if (ToState->IsConduit())
+	{
+		ToState->ExecuteShutdownNodes();
+	}
 }
 
 void FSMTransition::TakeTransition()
@@ -110,7 +128,7 @@ bool FSMTransition::DoesTransitionPass()
 		return false;
 	}
 	
-	TransitionEvaluatorHelper Evaluator(this);
+	TransitionEvaluatorHelper Evaluator(this);	// Sets bIsEvaluating = false on destruct.
 
 	if (CanEvaluateFromEvent() && bCanEnterTransitionFromEvent)
 	{
@@ -121,7 +139,20 @@ bool FSMTransition::DoesTransitionPass()
 	
 	if(CanEvaluateConditionally())
 	{
-		Execute();
+		bIsEvaluating = true;
+		if (ConditionalEvaluationType == ESMConditionalEvaluationType::SM_AlwaysTrue)
+		{
+			// Skip BP graph eval if not needed.
+			bCanEnterTransition = true;
+		}
+		else if (ConditionalEvaluationType == ESMConditionalEvaluationType::SM_NodeInstance)
+		{
+			bCanEnterTransition = CastChecked<USMTransitionInstance>(GetNodeInstance())->CanEnterTransition();
+		}
+		else
+		{
+			Execute();
+		}
 	}
 	else
 	{
@@ -131,8 +162,24 @@ bool FSMTransition::DoesTransitionPass()
 	return bCanEnterTransition;
 }
 
+bool FSMTransition::CanTransitionFromEvent()
+{
+	// An event would have signaled that it is evaluating and needs to be set to false now.
+	if (bIsEvaluating)
+	{
+		bIsEvaluating = false;
+#if WITH_EDITORONLY_DATA
+		bWasEvaluating = true; // Will be set to false from the editor.
+#endif
+	}
+	
+	return bCanEnterTransitionFromEvent;
+}
+
 bool FSMTransition::CanTransition(TArray<FSMTransition*>& Transitions)
 {
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMTransition::CanTransition"), STAT_SMTransition_CanTransition, STATGROUP_LogicDriver);
+	
 	if (!DoesTransitionPass())
 	{
 		return false;
@@ -203,7 +250,7 @@ void FSMTransition::GetConnectedTransitions(TArray<FSMTransition*>& Transitions)
 
 bool FSMTransition::CanEvaluateConditionally() const
 {
-	return bCanEvaluate;
+	return bCanEvaluate && ConditionalEvaluationType != ESMConditionalEvaluationType::SM_AlwaysFalse;
 }
 
 bool FSMTransition::CanEvaluateFromEvent() const

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GripMotionControllerComponent.h"
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"
 #include "Engine/Engine.h"
@@ -13,6 +14,7 @@
 #include "Engine/ActorChannel.h"
 #include "DrawDebugHelpers.h"
 #include "Grippables/GrippablePhysicsReplication.h"
+#include "Grippables/GrippableDataTypes.h"
 #include "Misc/BucketUpdateSubsystem.h"
 #include "GrippableActor.generated.h"
 
@@ -31,6 +33,11 @@ public:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_AttachmentReplication)
+		FRepAttachmentWithWeld AttachmentWeldReplication;
+
+	virtual void GatherCurrentMovement() override;
+
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly, Instanced, Category = "VRGripInterface")
 		TArray<class UVRGripScriptBase *> GripLogicScripts;
 
@@ -39,6 +46,10 @@ public:
 	// Sets the Deny Gripping variable on the FBPInterfaceSettings struct
 	UFUNCTION(BlueprintCallable, Category = "VRGripInterface")
 	void SetDenyGripping(bool bDenyGripping);
+
+	// Sets the grip priority on the FBPInterfaceSettings struct
+	UFUNCTION(BlueprintCallable, Category = "VRGripInterface")
+		void SetGripPriority(int NewGripPriority);
 
 	// Called when a object is gripped
 	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
@@ -85,6 +96,13 @@ public:
 	UFUNCTION(UnReliable, Server, WithValidation, Category = "Networking")
 		void Server_GetClientAuthReplication(const FRepMovementVR & newMovement);
 
+	// Returns if this object is currently client auth throwing
+	UFUNCTION(BlueprintPure, Category = "Networking")
+		FORCEINLINE bool IsCurrentlyClientAuthThrowing()
+	{
+		return ClientAuthReplicationData.bIsCurrentlyClientAuth;
+	}
+
 	// End client auth throwing data and functions //
 
 	// ------------------------------------------------
@@ -128,7 +146,7 @@ public:
 	virtual void OnRep_AttachmentReplication() override;
 	virtual void OnRep_ReplicateMovement() override;
 	virtual void OnRep_ReplicatedMovement() override;
-	void PostNetReceivePhysicState() override;
+	virtual void PostNetReceivePhysicState() override;
 
 	// Debug printing of when the object is replication destroyed
 	/*virtual void OnSubobjectDestroyFromReplication(UObject *Subobject) override
@@ -197,7 +215,7 @@ public:
 
 		// Get closest primary slot in range
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void ClosestGripSlotInRange(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
+		void ClosestGripSlotInRange(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
 
 
 	// Check if an object allows multiple grips at one time

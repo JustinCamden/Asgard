@@ -18,6 +18,16 @@ void USMTransitionInstance::SetCanEvaluate(bool bValue)
 	}
 }
 
+bool USMTransitionInstance::GetCanEvaluate() const
+{
+	if (FSMTransition* Transition = (FSMTransition*)GetOwningNode())
+	{
+		return Transition->bCanEvaluate;
+	}
+
+	return false;
+}
+
 USMStateInstance_Base* USMTransitionInstance::GetPreviousStateInstance() const
 {
 	if (FSMTransition* Transition = (FSMTransition*)GetOwningNode())

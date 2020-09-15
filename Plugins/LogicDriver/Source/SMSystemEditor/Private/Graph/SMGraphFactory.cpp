@@ -21,7 +21,7 @@
 #include "Nodes/SMGraphNode_StateMachineStateNode.h"
 #include "Nodes/SMGraphNode_StateMachineEntryNode.h"
 #include "Nodes/RootNodes/SMGraphK2Node_StateEntryNode.h"
-#include "SMBlueprintEditorUtils.h"
+#include "Utilities/SMBlueprintEditorUtils.h"
 
 #define LOCTEXT_NAMESPACE "SMGraphFactory"
 

@@ -58,12 +58,13 @@ void FSMExposedFunctionHandler::Execute(void* Parms) const
 	{
 		return;
 	}
-	
+
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMGraphFunction::GraphEvaluation"), STAT_SMExposedFunctionHandler_Execute, STATGROUP_LogicDriver);
 	OwnerObject->ProcessEvent(Function, Parms);
 }
 
 
-FSMGraphProperty_Base::FSMGraphProperty_Base(): LinkedProperty(nullptr), bIsInArray(false)
+FSMGraphProperty_Base::FSMGraphProperty_Base(): LinkedProperty(nullptr), bIsInArray(false), GuidIndex(-1)
 {
 #if WITH_EDITORONLY_DATA
 	GraphModuleClassName = "SMSystemEditor";
@@ -82,6 +83,8 @@ void FSMGraphProperty_Base::Initialize(UObject* Instance)
 
 void FSMGraphProperty_Base::Execute(void* Params)
 {
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMGraphProperty_Base::Execute"), STAT_SMGraphProperty_Base_Execute, STATGROUP_LogicDriver);
+	
 	GraphEvaluator.Execute(Params);
 
 	// If set then the graph evaluator is actually executing a graph from the linked property.
@@ -97,16 +100,33 @@ void FSMGraphProperty_Base::Reset()
 	GraphEvaluator.Reset();
 }
 
+void FSMGraphProperty_Base::InvalidateGuid()
+{
+	Guid.Invalidate();
+}
+
 const FGuid& FSMGraphProperty_Base::SetGuid(const FGuid& NewGuid)
 {
-	const FString GuidWithIndex = NewGuid.ToString();
-	USMUtils::PathToGuid(GuidWithIndex, &Guid);
+	const FString GuidString = NewGuid.ToString();
+	GuidUnmodified = NewGuid;
+	GuidIndex = -1;
+	
+	const FString GuidWithTemplate = GuidString + TemplateGuid.ToString();
+	USMUtils::PathToGuid(GuidWithTemplate, &Guid);
 	return Guid;
 }
 
-const FGuid& FSMGraphProperty_Base::SetGuid(const FGuid& NewGuid, int32 Index)
+const FGuid& FSMGraphProperty_Base::SetGuid(const FGuid& NewGuid, int32 Index, bool bCountTemplate)
 {
-	const FString GuidWithIndex = NewGuid.ToString() + FString::FromInt(Index);
+	FString GuidWithIndex = NewGuid.ToString() + FString::FromInt(Index);
+	GuidUnmodified = NewGuid;
+	GuidIndex = Index;
+	
+	if (bCountTemplate)
+	{
+		GuidWithIndex += TemplateGuid.ToString();
+	}
+	
 	USMUtils::PathToGuid(GuidWithIndex, &Guid);
 	return Guid;
 }
@@ -136,6 +156,25 @@ const FGuid& FSMGraphProperty_Base::SetOwnerGuid(const FGuid& NewGuid)
 const FGuid& FSMGraphProperty_Base::GetOwnerGuid() const
 {
 	return OwnerGuid;
+}
+
+const FGuid& FSMGraphProperty_Base::SetTemplateGuid(const FGuid& NewGuid, bool bRefreshGuid)
+{
+	TemplateGuid = NewGuid;
+
+	if (bRefreshGuid)
+	{
+		if (GuidIndex >= 0)
+		{
+			SetGuid(GetUnmodifiedGuid(), GuidIndex);
+		}
+		else
+		{
+			SetGuid(GetUnmodifiedGuid());
+		}
+	}
+	
+	return TemplateGuid;
 }
 
 #if WITH_EDITORONLY_DATA

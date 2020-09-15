@@ -14,10 +14,10 @@ class USMGraphK2Node_IntermediateEntryNode : public USMGraphK2Node_StateMachineE
 	GENERATED_UCLASS_BODY()
 
 	//~ Begin UEdGraphNode Interface
-	void AllocateDefaultPins() override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual void AllocateDefaultPins() override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
 	//~ End UEdGraphNode Interface
 };
 
@@ -30,16 +30,16 @@ class USMGraphK2Node_IntermediateStateMachineStartNode : public USMGraphK2Node_R
 	GENERATED_UCLASS_BODY()
 
 	//~ Begin UEdGraphNode Interface
-	bool CanUserDeleteNode() const override { return true; }
-	void AllocateDefaultPins() override;
-	ERedirectType DoPinsMatchForReconstruction(const UEdGraphPin* NewPin, int32 NewPinIndex, const UEdGraphPin* OldPin, int32 OldPinIndex) const override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	FText GetMenuCategory() const override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
-	void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
-	bool IsActionFilteredOut(class FBlueprintActionFilter const& Filter) override;
-	void PostPlacedNewNode() override;
+	virtual bool CanUserDeleteNode() const override { return true; }
+	virtual void AllocateDefaultPins() override;
+	virtual ERedirectType DoPinsMatchForReconstruction(const UEdGraphPin* NewPin, int32 NewPinIndex, const UEdGraphPin* OldPin, int32 OldPinIndex) const override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual FText GetMenuCategory() const override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual bool IsActionFilteredOut(class FBlueprintActionFilter const& Filter) override;
+	virtual void PostPlacedNewNode() override;
 	//~ End UEdGraphNode Interface
 };
 
@@ -52,14 +52,14 @@ class USMGraphK2Node_IntermediateStateMachineStopNode : public USMGraphK2Node_Ru
 	GENERATED_UCLASS_BODY()
 
 	//~ Begin UEdGraphNode Interface
-	bool CanUserDeleteNode() const override { return true; }
-	void AllocateDefaultPins() override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	FText GetMenuCategory() const override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
-	void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
-	bool IsActionFilteredOut(class FBlueprintActionFilter const& Filter) override;
-	void PostPlacedNewNode() override;
+	virtual bool CanUserDeleteNode() const override { return true; }
+	virtual void AllocateDefaultPins() override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual FText GetMenuCategory() const override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual bool IsActionFilteredOut(class FBlueprintActionFilter const& Filter) override;
+	virtual void PostPlacedNewNode() override;
 	//~ End UEdGraphNode Interface
 };

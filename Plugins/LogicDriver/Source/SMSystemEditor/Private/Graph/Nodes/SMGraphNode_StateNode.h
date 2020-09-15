@@ -49,19 +49,19 @@ class SMSYSTEMEDITOR_API USMGraphNode_StateNodeBase : public USMGraphNode_Base
 	bool bCanTransitionToSelf;
 
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	void AutowireNewNode(UEdGraphPin* FromPin) override;
+	virtual void AllocateDefaultPins() override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual void AutowireNewNode(UEdGraphPin* FromPin) override;
 	/** Called after playing a new node -- will create new blue print graph. */
-	void PostPlacedNewNode() override;
-	void PostPasteNode() override;
-	void DestroyNode() override;
-	TSharedPtr<class INameValidatorInterface> MakeNameValidator() const override;
-	void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
+	virtual void PostPlacedNewNode() override;
+	virtual void PostPasteNode() override;
+	virtual void DestroyNode() override;
+	virtual TSharedPtr<class INameValidatorInterface> MakeNameValidator() const override;
+	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
 	// ~UEdGraphNode
 
 	// USMGraphNode
-	void ImportDeprecatedProperties() override;
+	virtual void ImportDeprecatedProperties() override;
 	// ~USMGraphNode
 	
 	/** Copy configuration settings to the runtime node. */
@@ -98,18 +98,51 @@ class SMSYSTEMEDITOR_API USMGraphNode_StateNodeBase : public USMGraphNode_Base
 	/** Returns the next node at the given output linked to index. */
 	USMGraphNode_StateNodeBase* GetNextNode(int32 Index = 0) const;
 
+	/** Returns a transition going to the input pin. */
 	USMGraphNode_TransitionEdge* GetPreviousTransition(int32 Index = 0) const;
 
+	/** Returns a transitions from the output pin. */
 	USMGraphNode_TransitionEdge* GetNextTransition(int32 Index = 0) const;
+
+	/** Return all transitions to the input pin. */
+	void GetInputTransitions(TArray<USMGraphNode_TransitionEdge*>& OutTransitions) const;
+
+	/** Return all transitions from the output pin. */
+	void GetOutputTransitions(TArray<USMGraphNode_TransitionEdge*>& OutTransitions) const;
+
+	/** Return the entry pin if this states is connected to an entry node, nullptr otherwise. */
+	UEdGraphPin* GetConnectedEntryPin() const;
+	
+	FLinearColor GetBackgroundColorForNodeInstance(USMNodeInstance* NodeInstance) const;
 protected:
-	FLinearColor Internal_GetBackgroundColor() const override;
+	virtual FLinearColor Internal_GetBackgroundColor() const override;
+};
+
+USTRUCT()
+struct FStateStackContainer
+{
+	GENERATED_BODY()
+
+	/** The class to assign the template for this state stack. */
+	UPROPERTY(EditAnywhere, Category = "Class", meta = (BlueprintBaseOnly))
+	TSubclassOf<USMStateInstance> StateStackClass;
+
+	/** The instanced template to use as an archetype. */
+	UPROPERTY(VisibleDefaultsOnly, Instanced, Category = "Class", meta = (DisplayName = Template))
+	USMNodeInstance* NodeStackInstanceTemplate;
+
+	void InitTemplate(UObject* Owner, bool bForceInit = false, bool bForceNewGuid = false);
+	void DestroyTemplate();
+
+	UPROPERTY()
+	FGuid TemplateGuid;
 };
 
 /**
  * Regular state nodes which have K2 graphs.
  */
-UCLASS(MinimalAPI)
-class USMGraphNode_StateNode : public USMGraphNode_StateNodeBase
+UCLASS()
+class SMSYSTEMEDITOR_API USMGraphNode_StateNode : public USMGraphNode_StateNodeBase
 {
 public:
 	GENERATED_UCLASS_BODY()
@@ -117,16 +150,41 @@ public:
 	UPROPERTY(EditAnywhere, NoClear, Category = "Class", meta = (BlueprintBaseOnly))
 	TSubclassOf<USMStateInstance> StateClass;
 
+	/** Augment the state by adding additional state classes to perform logic processing. */
+	UPROPERTY(EditAnywhere, Category = "Class")
+	TArray<FStateStackContainer> StateStack;
+
 	// UEdGraphNode
-	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	//~ UEdGraphNode
 	
 	// USMGraphNode_Base
-	void PlaceDefaultInstanceNodes() override;
-	UClass* GetNodeClass() const override { return StateClass; }
-	void SetNodeClass(UClass* Class) override;
-	FName GetFriendlyNodeName() const override { return "State"; }
+	virtual void PlaceDefaultInstanceNodes() override;
+	virtual UClass* GetNodeClass() const override { return StateClass; }
+	virtual void SetNodeClass(UClass* Class) override;
+	virtual FName GetFriendlyNodeName() const override { return "State"; }
+	virtual void InitTemplate() override;
+	virtual void OnCompile(FSMKismetCompilerContext& CompilerContext) override;
 	// ~USMGraphNode_Base
+
+	const TArray<FStateStackContainer>& GetAllNodeStackTemplates() const;
+
+	/**
+	 * Retrieve the array index from the template guid
+	 *
+	 * @return the array index or -1 if not found.
+	 */
+	int32 GetIndexOfTemplate(const FGuid& TemplateGuid) const;
+
+	/**
+	 * Retrieve the template instance from an index.
+	 *
+	 * @return the NodeInstance template.
+	 */
+	USMNodeInstance* GetTemplateFromIndex(int32 Index) const;
+	
+	void InitStateStack();
+	void DestroyStateStack();
 };
 
 /**
@@ -144,20 +202,20 @@ public:
 	bool bAllowInitialReentry;
 	
 	// UEdGraphNode
-	void AllocateDefaultPins() override;
-	void PostPlacedNewNode() override;
-	void PostPasteNode() override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	void OnRenameNode(const FString& NewName) override;
+	virtual void AllocateDefaultPins() override;
+	virtual void PostPlacedNewNode() override;
+	virtual void PostPasteNode() override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual void OnRenameNode(const FString& NewName) override;
 	// ~UEdGraphNode
 	
 	// USMGraphNode_Base
-	FName GetFriendlyNodeName() const override { return "Any State"; }
-	FString GetStateName() const override;
+	virtual FName GetFriendlyNodeName() const override { return "Any State"; }
+	virtual FString GetStateName() const override;
 	// ~USMGraphNode_Base
 
 protected:
-	FLinearColor Internal_GetBackgroundColor() const override;
+	virtual FLinearColor Internal_GetBackgroundColor() const override;
 	
 protected:
 	UPROPERTY()

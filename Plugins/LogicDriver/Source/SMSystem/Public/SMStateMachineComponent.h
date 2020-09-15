@@ -8,7 +8,6 @@
 #include "Engine/ActorChannel.h"
 #include "SMStateMachineComponent.generated.h"
 
-
 /**
  * Actor Component wrapper for a State Machine Instance. Supports Replication. Will default state machine context to the owning actor of this component.
  * Call Start() when ready.
@@ -21,20 +20,20 @@ class SMSYSTEM_API USMStateMachineComponent : public UActorComponent, public ISM
 public:
 
 	// UObject
-	void PostLoad() override;
-	void Serialize(FArchive& Ar) override;
+	virtual void PostLoad() override;
+	virtual void Serialize(FArchive& Ar) override;
 #if WITH_EDITOR
-	void PostEditImport() override;
-	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostEditImport() override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 	// ~UObject
 	
 	// UActorComponent
-	bool ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	void BeginPlay() override;
-	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	void OnComponentDestroyed(bool bDestroyingHierarchy) override;
+	virtual bool ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void BeginPlay() override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
 	// ~ UActorComponent
 
 	// ISMStateMachineInstance
@@ -45,36 +44,36 @@ public:
 	 * will incorrectly report as Stand Alone.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Components")
-	void Initialize(UObject* Context = nullptr) override;
+	virtual void Initialize(UObject* Context = nullptr) override;
 
 	/** Start the root state machine. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Components")
-	void Start() override;
+	virtual void Start() override;
 
 	/** Manual way of updating the root state machine if tick is disabled. Not used by default and for custom update implementations. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Components")
-	void Update(float DeltaSeconds) override;
+	virtual void Update(float DeltaSeconds) override;
 
 	/** This will complete the state machine's current state and force the machine to end regardless of if the state is an end state. */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Components")
-	void Stop() override;
+	virtual void Stop() override;
 
 	/**
 	 * Shutdown this instance. Calls Stop. Must call initialize again before use.
 	 * If the goal is to restart the state machine later call Stop instead.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Components")
-	void Shutdown() override;
+	virtual void Shutdown() override;
 
 	// ~ISMStateMachineInstance
 
 	// ISMStateMachineNetworkedInstance
 
 	/** Provide a transition for the server to take. */
-	void ProcessTransaction(const TArray<FSMNetworkedTransaction>& Transactions) override;
+	virtual void ProcessTransaction(const TArray<FSMNetworkedTransaction>& Transactions) override;
 
 	/** Should the instance replicate states. */
-	bool ShouldReplicateStates() const override;
+	virtual bool ShouldReplicateStates() const override;
 	// ~ISMStateMachineNetworkedInstance
 
 	/** If this is a networked environment. */
@@ -158,7 +157,7 @@ protected:
 	/** Tick overrides are deprecated in favor of modifying the USMInstance template. */
 	void ImportDeprecatedProperties();
 #endif
-	
+
 	virtual void DoInitialize(UObject* Context);
 	virtual void DoStart();
 	virtual void DoUpdate(float DeltaTime);

@@ -16,6 +16,7 @@ struct SMSYSTEM_API FSMInfo_Base
 
 	FSMInfo_Base();
 	FSMInfo_Base(const FSMNode_Base& Node);
+	virtual ~FSMInfo_Base() = default;
 	
 	/** Friendly name of this node. Not guaranteed to be unique. */
 	UPROPERTY(BlueprintReadOnly, Category = "State Machines")
@@ -40,6 +41,8 @@ struct SMSYSTEM_API FSMInfo_Base
 	/** The node instance for this class. This will either be a default StateInstance or TransitionInstance, or a user defined one. */
 	UPROPERTY(BlueprintReadOnly, Category = "State Machines")
 	class USMNodeInstance* NodeInstance;
+
+	virtual FString ToString() const;
 };
 
 USTRUCT(BlueprintType, meta = (DisplayName = "Transition Information"))
@@ -61,6 +64,10 @@ struct SMSYSTEM_API FSMTransitionInfo : public FSMInfo_Base
 	/** The assigned transition priority. */
 	UPROPERTY(BlueprintReadOnly, Category = "State Machines")
 	int32 Priority;
+
+	const FSMTransition* OwningTransition;
+
+	virtual FString ToString() const override;
 };
 
 USTRUCT(BlueprintType, meta = (DisplayName = "State Information"))
@@ -78,4 +85,6 @@ struct SMSYSTEM_API FSMStateInfo : public FSMInfo_Base
 	/** If this state is considered an end state. */
 	UPROPERTY(BlueprintReadOnly, Category = "State Machines")
 	bool bIsEndState;
+
+	const FSMState_Base* OwningState;
 };

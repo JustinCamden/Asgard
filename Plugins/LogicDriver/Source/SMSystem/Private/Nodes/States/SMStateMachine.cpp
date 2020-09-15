@@ -561,6 +561,34 @@ bool FSMStateMachine::EndState(float DeltaSeconds, const FSMTransition* Transiti
 	return true;
 }
 
+void FSMStateMachine::ExecuteInitializeNodes()
+{
+	Super::ExecuteInitializeNodes();
+
+	if (!IsReferencedByInstance)
+	{
+		// Don't double call this from a reference.
+		if (USMStateMachineInstance* StateInstance = Cast<USMStateMachineInstance>(GetNodeInstance()))
+		{
+			StateInstance->OnStateInitialized();
+		}
+	}
+}
+
+void FSMStateMachine::ExecuteShutdownNodes()
+{
+	Super::ExecuteShutdownNodes();
+
+	if (!IsReferencedByInstance)
+	{
+		// Don't double call this from a reference.
+		if (USMStateMachineInstance* StateInstance = Cast<USMStateMachineInstance>(GetNodeInstance()))
+		{
+			StateInstance->OnStateShutdown();
+		}
+	}
+}
+
 void FSMStateMachine::OnStartedByInstance(USMInstance* Instance)
 {
 	if (bHasAdditionalLogic)
@@ -568,12 +596,15 @@ void FSMStateMachine::OnStartedByInstance(USMInstance* Instance)
 		Super::OnStartedByInstance(Instance);
 	}
 
-	if (USMStateMachineInstance* StateInstance = Cast<USMStateMachineInstance>(GetNodeInstance()))
+	if (!IsReferencedByInstance && !Instance->GetReferenceOwnerConst())
 	{
-		StateInstance->OnRootStateMachineStart();
+		// Root state machine calls in FSMs only reflect the master root state machine so only call this if
+		// if this node is not a proxy and the owning instance isn't a reference.
+		if (USMStateMachineInstance* StateInstance = Cast<USMStateMachineInstance>(GetNodeInstance()))
+		{
+			StateInstance->OnRootStateMachineStart();
+		}
 	}
-
-	// Checking for a reference is unnecessary because the reference BP will also call this method.
 }
 
 void FSMStateMachine::OnStoppedByInstance(USMInstance* Instance)
@@ -583,12 +614,15 @@ void FSMStateMachine::OnStoppedByInstance(USMInstance* Instance)
 		Super::OnStoppedByInstance(Instance);
 	}
 
-	if (USMStateMachineInstance* StateInstance = Cast<USMStateMachineInstance>(GetNodeInstance()))
+	if (!IsReferencedByInstance && !Instance->GetReferenceOwnerConst())
 	{
-		StateInstance->OnRootStateMachineStop();
+		// Root state machine calls in FSMs only reflect the master root state machine so only call this if
+		// if this node is not a proxy and the owning instance isn't a reference.
+		if (USMStateMachineInstance* StateInstance = Cast<USMStateMachineInstance>(GetNodeInstance()))
+		{
+			StateInstance->OnRootStateMachineStop();
+		}
 	}
-
-	// Checking for a reference is unnecessary because the reference BP will also call this method.
 }
 
 // This is only necessary for legacy operations with reusing references that reference themselves. Also assists with unit test for reusing references.

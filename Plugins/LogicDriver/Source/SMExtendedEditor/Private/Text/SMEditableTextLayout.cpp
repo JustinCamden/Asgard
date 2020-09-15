@@ -17,7 +17,7 @@
 #include "Internationalization/BreakIterator.h"
 #include "HAL/PlatformApplicationMisc.h"
 #include "SMTextEditHelper.h"
-#include "SMNodeInstanceUtils.h"
+#include "Utilities/SMNodeInstanceUtils.h"
 
 /**
  * Ensure that text transactions are always completed.

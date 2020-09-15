@@ -22,13 +22,13 @@ class USMGraphNode_StateMachineEntryNode : public USMGraphNode_Base
 	bool bAllowParallelEntryStates;
 	
 	//~ Begin UEdGraphNode Interface
-	void AllocateDefaultPins() override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	void PostPasteNode() override;
-	bool CanUserDeleteNode() const override { return false; }
-	bool CanDuplicateNode() const override { return false; }
-	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void AllocateDefaultPins() override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual void PostPasteNode() override;
+	virtual bool CanUserDeleteNode() const override { return false; }
+	virtual bool CanDuplicateNode() const override { return false; }
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	//~ End UEdGraphNode Interface
 };
 
@@ -41,9 +41,9 @@ class USMGraphK2Node_StateMachineEntryNode : public USMGraphK2Node_RuntimeNodeCo
 	UPROPERTY(BlueprintReadWrite, Category = "State Machines")
 	FSMStateMachine StateMachineNode;
 
-	FSMNode_Base* GetRunTimeNode()  override { return &StateMachineNode; }
+	virtual FSMNode_Base* GetRunTimeNode()  override { return &StateMachineNode; }
 
 	//~ Begin UEdGraphNode Interface
-	void AllocateDefaultPins() override;
+	virtual void AllocateDefaultPins() override;
 	//~ End UEdGraphNode Interface
 };

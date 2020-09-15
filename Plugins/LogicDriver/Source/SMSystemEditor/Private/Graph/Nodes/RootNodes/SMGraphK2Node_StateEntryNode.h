@@ -15,11 +15,11 @@ class USMGraphK2Node_StateEntryNode : public USMGraphK2Node_RuntimeNodeContainer
 	FSMState StateNode;
 
 	//~ Begin UEdGraphNode Interface
-	void AllocateDefaultPins() override;
-	FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	FText GetTooltipText() const override;
-	bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
+	virtual void AllocateDefaultPins() override;
+	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
+	virtual FText GetTooltipText() const override;
+	virtual bool IsCompatibleWithGraph(UEdGraph const* Graph) const override;
 	//~ End UEdGraphNode Interface
 
-	FSMNode_Base* GetRunTimeNode()  override { return &StateNode; }
+	virtual FSMNode_Base* GetRunTimeNode()  override { return &StateNode; }
 };

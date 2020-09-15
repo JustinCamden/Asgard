@@ -1,7 +1,7 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 
 #include "SMUtils.h"
-#include "SMBlueprintGeneratedClass.h"
+#include "Blueprints/SMBlueprintGeneratedClass.h"
 #include "Engine/World.h"
 #include "SMLogging.h"
 
@@ -219,7 +219,7 @@ bool USMUtils::GenerateStateMachine(UObject* Instance, FSMStateMachine& StateMac
 				GenerateStateMachine(Instance, NestedStateMachine, RunTimeProperties, bDryRun);
 			}
 
-			if (State->bIsRootNode)
+			if (State->IsRootNode())
 			{
 				StateMachineOut.AddInitialState(State);
 			}
