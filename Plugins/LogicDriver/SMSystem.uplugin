@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 21,
-	"VersionName": "2.4.0",
+	"Version": 22,
+	"VersionName": "2.4.1",
 	"FriendlyName": "Logic Driver Pro - State Machine Blueprint Editor",
 	"Description": "Create State Machines in Blueprints using graphs to define state and transition logic.",
 	"Category": "Editor",

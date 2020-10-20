@@ -26,6 +26,18 @@ void USMGraphK2Node_GraphPropertyNode::AllocateDefaultPins()
 	CreatePin(EGPD_Input, Prop->VariableType, Prop->VariableName);
 }
 
+void USMGraphK2Node_GraphPropertyNode::ConfigureRuntimePropertyNode()
+{
+	RuntimeGraphProperty.GraphEvaluator = GraphProperty.GraphEvaluator;
+	RuntimeGraphProperty.SetGuid(GraphProperty.GetGuid());
+	RuntimeGraphProperty.SetOwnerGuid(GraphProperty.GetOwnerGuid());
+}
+
+FSMGraphProperty_Base_Runtime* USMGraphK2Node_GraphPropertyNode::GetRuntimePropertyNode()
+{
+	return &RuntimeGraphProperty;
+}
+
 TSharedPtr<SSMGraphProperty_Base> USMGraphK2Node_GraphPropertyNode::GetGraphNodeWidget() const
 {
 	return SNew(SSMGraphProperty)

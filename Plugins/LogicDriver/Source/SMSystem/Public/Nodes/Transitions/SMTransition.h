@@ -44,23 +44,44 @@ public:
 
 	/** Set from graph execution. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Result, meta = (AlwaysAsPin))
-	bool bCanEnterTransition;
+	uint32 bCanEnterTransition: 1;
 
 	/** Set from graph execution when updated by event. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Result, meta = (AlwaysAsPin))
-	bool bCanEnterTransitionFromEvent;
+	uint32 bCanEnterTransitionFromEvent: 1;
 
 	/** Set internally and from auto bound events. True only during evaluation. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Result, meta = (AlwaysAsPin))
-	bool bIsEvaluating;
+	uint32 bIsEvaluating: 1;
 	
 	/** Set from graph execution or configurable from details panel. Must be true for the transition to be evaluated conditionally. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Transition)
-	bool bCanEvaluate;
+	uint32 bCanEvaluate: 1;
 
 	/** Allows auto-binded events to evaluate. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Transition)
-	bool bCanEvaluateFromEvent;
+	uint32 bCanEvaluateFromEvent: 1;
+
+	/**
+	 * This transition will not prevent the next transition in the priority sequence from being evaluated.
+	 * This allows the possibility for multiple active states.
+	 */
+	UPROPERTY()
+	uint32 bRunParallel: 1;
+
+	/**
+	 * If the transition should still evaluate if already connecting to an active state.
+	 */
+	UPROPERTY()
+	uint32 bEvalIfNextStateActive: 1;
+
+	/** Secondary check state machine will make if a state is evaluating transitions on the same tick as Start State. */
+	UPROPERTY()
+	uint32 bCanEvalWithStartState: 1;
+	
+	/** The transition can never be taken conditionally or from an event. */
+	UPROPERTY()
+	uint32 bAlwaysFalse: 1;
 
 	/** Guid to the state this transition is from. Kismet compiler will convert this into a state link. */
 	UPROPERTY()
@@ -70,27 +91,6 @@ public:
 	UPROPERTY()
 	FGuid ToGuid;
 	
-	/**
-	 * This transition will not prevent the next transition in the priority sequence from being evaluated.
-	 * This allows the possibility for multiple active states.
-	 */
-	UPROPERTY()
-	bool bRunParallel;
-
-	/**
-	 * If the transition should still evaluate if already connecting to an active state.
-	 */
-	UPROPERTY()
-	bool bEvalIfNextStateActive;
-
-	/** Secondary check state machine will make if a state is evaluating transitions on the same tick as Start State. */
-	UPROPERTY()
-	bool bCanEvalWithStartState;
-	
-	/** The transition can never be taken conditionally or from an event. */
-	UPROPERTY()
-	bool bAlwaysFalse;
-
 	/** The conditional evaluation type which determines the type of evaluation required if any. */
 	UPROPERTY()
 	ESMConditionalEvaluationType ConditionalEvaluationType;

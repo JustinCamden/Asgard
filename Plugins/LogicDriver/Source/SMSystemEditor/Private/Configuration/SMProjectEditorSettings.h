@@ -33,6 +33,24 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Version Updates")
 	bool bDisplayUpdateNotification;
+
+	/**
+	 * Warn if approaching Blueprint memory limits on a compile.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Validation|Memory")
+	bool bDisplayMemoryLimitsOnCompile;
+
+	/**
+	 * Display the used struct memory as an info message on compile. 
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Validation|Memory", meta = (EditCondition = "bDisplayMemoryLimitsOnCompile"))
+	bool bAlwaysDisplayStructMemoryUsage;
+	
+	/**
+	 * The percent of used struct memory that must be reached before a warning is triggered.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Validation|Memory", meta = (EditCondition = "bDisplayMemoryLimitsOnCompile", UIMin = 0.0, UIMax = 1.0))
+	float StructMemoryLimitWarningThreshold;
 	
 	/**
 	 * Perform additional validation when compiling the state machine default object by attempting a low level instantiation.
@@ -47,7 +65,7 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Validation")
 	bool bWarnIfChildrenAreOutOfDate;
-
+	
 	/**
 	 * Newly placed conduits will automatically be configured as transitions.
 	 */

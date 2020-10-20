@@ -184,7 +184,7 @@ USMNodeInstance* FSMNode_Base::GetNodeInStack(int32 Index) const
 	return nullptr;
 }
 
-void FSMNode_Base::AddVariableGraphProperty(const FSMGraphProperty_Base& GraphProperty)
+void FSMNode_Base::AddVariableGraphProperty(const FSMGraphProperty_Base_Runtime& GraphProperty)
 {
 	VariableGraphProperties.Add(GraphProperty);
 }
@@ -238,7 +238,7 @@ void FSMNode_Base::ExecuteGraphProperties(bool bVariablesOnly)
 {
 	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMNode_Base::ExecuteGraphProperties"), STAT_SMNode_Base_ExecuteGraphProperties, STATGROUP_LogicDriver);
 	
-	for (FSMGraphProperty_Base& GraphProperty : VariableGraphProperties)
+	for (FSMGraphProperty_Base_Runtime& GraphProperty : VariableGraphProperties)
 	{
 		GraphProperty.Execute();
 	}
@@ -248,7 +248,7 @@ void FSMNode_Base::ExecuteGraphProperties(bool bVariablesOnly)
 		return;
 	}
 
-	for (FSMGraphProperty_Base* GraphProperty : GraphProperties)
+	for (FSMGraphProperty_Base_Runtime* GraphProperty : GraphProperties)
 	{
 		GraphProperty->Execute();
 	}
@@ -256,12 +256,12 @@ void FSMNode_Base::ExecuteGraphProperties(bool bVariablesOnly)
 
 void FSMNode_Base::ResetGraphProperties()
 {
-	for (FSMGraphProperty_Base& GraphProperty : VariableGraphProperties)
+	for (FSMGraphProperty_Base_Runtime& GraphProperty : VariableGraphProperties)
 	{
 		GraphProperty.Reset();
 	}
 	
-	for (FSMGraphProperty_Base* GraphProperty : GraphProperties)
+	for (FSMGraphProperty_Base_Runtime* GraphProperty : GraphProperties)
 	{
 		GraphProperty->Reset();
 	}
@@ -280,7 +280,7 @@ void FSMNode_Base::CreateGraphProperties()
 	}
 	
 	// Variable properties already have everything they need and just need to be initialized.
-	for(FSMGraphProperty_Base& VariableProperty : VariableGraphProperties)
+	for(FSMGraphProperty_Base_Runtime& VariableProperty : VariableGraphProperties)
 	{
 		VariableProperty.Initialize(OwningInstance);
 	}
@@ -289,14 +289,14 @@ void FSMNode_Base::CreateGraphProperties()
 void FSMNode_Base::CreateGraphPropertiesForTemplate(USMNodeInstance* Template, const TSet<FProperty*>& GraphStructPropertiesForStateMachine)
 {
 	/* Looks for the real property stored on the owning instance. */
-	auto GetRealProperty = [&](const TSet<FProperty*>& Properties, const FSMGraphProperty_Base* GraphProperty) -> FSMGraphProperty_Base*
+	auto GetRealProperty = [&](const TSet<FProperty*>& Properties, const FSMGraphProperty_Base_Runtime* GraphProperty) -> FSMGraphProperty_Base_Runtime*
 	{
 		for (FProperty* Prop : Properties)
 		{
-			TArray<FSMGraphProperty_Base*> GraphPropertyInstances;
+			TArray<FSMGraphProperty_Base_Runtime*> GraphPropertyInstances;
 			USMUtils::BlueprintPropertyToNativeProperty(Prop, OwningInstance, GraphPropertyInstances);
 
-			for (FSMGraphProperty_Base* FoundInstance : GraphPropertyInstances)
+			for (FSMGraphProperty_Base_Runtime* FoundInstance : GraphPropertyInstances)
 			{
 				// The real property is the owner guid of the instanced property.
 				if (FoundInstance->GetGuid() == GraphProperty->GetOwnerGuid())
@@ -312,10 +312,10 @@ void FSMNode_Base::CreateGraphPropertiesForTemplate(USMNodeInstance* Template, c
 	{
 		for (FProperty* GraphStructProperty : GraphStructProperties)
 		{
-			TArray<FSMGraphProperty_Base*> GraphPropertyInstances;
+			TArray<FSMGraphProperty_Base_Runtime*> GraphPropertyInstances;
 			USMUtils::BlueprintPropertyToNativeProperty(GraphStructProperty, Template, GraphPropertyInstances);
 
-			for (FSMGraphProperty_Base* GraphProperty : GraphPropertyInstances)
+			for (FSMGraphProperty_Base_Runtime* GraphProperty : GraphPropertyInstances)
 			{
 				// The graph property being executed is actually in the template, but the graph has a duplicate created on the owning instance,
 				// so we need to link them to get the owning instance result properly to template.

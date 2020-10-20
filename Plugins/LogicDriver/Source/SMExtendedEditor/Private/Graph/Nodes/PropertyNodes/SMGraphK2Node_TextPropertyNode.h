@@ -11,6 +11,9 @@ class SMEXTENDEDEDITOR_API USMGraphK2Node_TextPropertyNode : public USMGraphK2No
 	GENERATED_UCLASS_BODY()
 
 public:
+
+	UPROPERTY()
+	FSMTextGraphProperty_Runtime RuntimeTextProperty;
 	
 	UPROPERTY(EditAnywhere, Category = "Graph Property")
 	FSMTextGraphProperty TextProperty;
@@ -20,6 +23,8 @@ public:
 	// ~UedGraphNode
 	
 	// USMGraphK2Node_PropertyNode
+	virtual void ConfigureRuntimePropertyNode() override;
+	virtual FSMGraphProperty_Base_Runtime* GetRuntimePropertyNode() override;
 	virtual FSMGraphProperty_Base* GetPropertyNode() override { return &TextProperty; }
 	virtual void SetPropertyNode(FSMGraphProperty_Base* NewNode) override { TextProperty = *(FSMTextGraphProperty*)NewNode; }
 	virtual TSharedPtr<SSMGraphProperty_Base> GetGraphNodeWidget() const override;

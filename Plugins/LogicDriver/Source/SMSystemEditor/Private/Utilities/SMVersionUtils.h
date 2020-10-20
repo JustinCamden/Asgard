@@ -9,7 +9,11 @@ class USMBlueprint;
 class SMSYSTEMEDITOR_API FSMVersionUtils : public FBlueprintEditorUtils
 {
 public:
-	static int32 GetCurrentBlueprintVersion() { return 1; }
+	/**
+	 * State machine blueprints are saved with this version number.
+	 * On plugin load this version is checked against the asset version.
+	 */
+	static int32 GetCurrentBlueprintVersion();
 	
 	/** Check all SM blueprints and update to a new version if necessary. */
 	static void UpdateBlueprintsToNewVersion();
@@ -19,8 +23,15 @@ public:
 
 	/** Checks if a state machine blueprint is up to date. */
 	static bool IsStateMachineUpToDate(USMBlueprint* Blueprint);
+
+	/** Checks if the state machine is from a new plugin version than installed. */
+	static bool IsStateMachineFromNewerPluginVersion(int32 CompareVersion);
 	
 	/** Sets the version tag of the asset. */
 	static void SetToLatestVersion(UBlueprint* Blueprint);
+	
+private:
+	static void DismissWrongVersionNotification();
+
 };
 

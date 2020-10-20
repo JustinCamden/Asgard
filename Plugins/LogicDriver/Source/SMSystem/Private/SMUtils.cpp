@@ -318,7 +318,7 @@ bool USMUtils::TryGetGraphPropertiesForClass(UClass* Class, TSet<FProperty*>& Pr
 	{
 		if (FStructProperty* StructProperty = CastField<FStructProperty>(*It))
 		{
-			if (StructProperty->Struct->IsChildOf(FSMGraphProperty_Base::StaticStruct()))
+			if (StructProperty->Struct->IsChildOf(FSMGraphProperty_Base_Runtime::StaticStruct()))
 			{
 				PropertiesOut.Add(StructProperty);
 			}
@@ -327,7 +327,7 @@ bool USMUtils::TryGetGraphPropertiesForClass(UClass* Class, TSet<FProperty*>& Pr
 		{
 			if(FStructProperty* InnerProp = CastField<FStructProperty>(ArrayProp->Inner))
 			{
-				if (InnerProp->Struct->IsChildOf(FSMGraphProperty_Base::StaticStruct()))
+				if (InnerProp->Struct->IsChildOf(FSMGraphProperty_Base_Runtime::StaticStruct()))
 				{
 					PropertiesOut.Add(InnerProp);
 				}

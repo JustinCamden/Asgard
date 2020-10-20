@@ -89,7 +89,7 @@ FStructProperty* FSMNodeInstanceUtils::IsPropertyGraphProperty(FProperty* Proper
 	
 	if (FStructProperty* StructProperty = CastField<FStructProperty>(Property))
 	{
-		if (StructProperty->Struct->IsChildOf(FSMGraphProperty_Base::StaticStruct()))
+		if (StructProperty->Struct->IsChildOf(FSMGraphProperty_Base_Runtime::StaticStruct()))
 		{
 			return StructProperty;
 		}
@@ -99,7 +99,7 @@ FStructProperty* FSMNodeInstanceUtils::IsPropertyGraphProperty(FProperty* Proper
 	{
 		if (FStructProperty* StructProperty = CastField<FStructProperty>(ArrayProperty->Inner))
 		{
-			if (StructProperty->Struct->IsChildOf(FSMGraphProperty_Base::StaticStruct()))
+			if (StructProperty->Struct->IsChildOf(FSMGraphProperty_Base_Runtime::StaticStruct()))
 			{
 				return StructProperty;
 			}

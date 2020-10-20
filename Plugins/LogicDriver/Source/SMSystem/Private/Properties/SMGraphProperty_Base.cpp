@@ -63,8 +63,54 @@ void FSMExposedFunctionHandler::Execute(void* Parms) const
 	OwnerObject->ProcessEvent(Function, Parms);
 }
 
+FSMGraphProperty_Base_Runtime::FSMGraphProperty_Base_Runtime(): LinkedProperty(nullptr)
+{
+	
+}
 
-FSMGraphProperty_Base::FSMGraphProperty_Base(): LinkedProperty(nullptr), bIsInArray(false), GuidIndex(-1)
+void FSMGraphProperty_Base_Runtime::Initialize(UObject* Instance)
+{
+	GraphEvaluator.Initialize(Instance);
+}
+
+void FSMGraphProperty_Base_Runtime::Execute(void* Params)
+{
+	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMGraphProperty_Base::Execute"), STAT_SMGraphProperty_Base_Execute, STATGROUP_LogicDriver);
+
+	GraphEvaluator.Execute(Params);
+
+	// If set then the graph evaluator is actually executing a graph from the linked property.
+	// We should copy the result value into this property.
+	if (LinkedProperty)
+	{
+		SetResult(LinkedProperty->GetResult());
+	}
+}
+
+void FSMGraphProperty_Base_Runtime::Reset()
+{
+	GraphEvaluator.Reset();
+}
+
+const FGuid& FSMGraphProperty_Base_Runtime::SetGuid(const FGuid& NewGuid)
+{
+	Guid = NewGuid;
+	return Guid;
+}
+
+const FGuid& FSMGraphProperty_Base_Runtime::SetOwnerGuid(const FGuid& NewGuid)
+{
+	OwnerGuid = NewGuid;
+	return OwnerGuid;
+}
+
+
+FSMGraphProperty_Runtime::FSMGraphProperty_Runtime()
+{
+}
+
+
+FSMGraphProperty_Base::FSMGraphProperty_Base(): bIsInArray(false), GuidIndex(-1)
 {
 #if WITH_EDITORONLY_DATA
 	GraphModuleClassName = "SMSystemEditor";
@@ -74,35 +120,6 @@ FSMGraphProperty_Base::FSMGraphProperty_Base(): LinkedProperty(nullptr), bIsInAr
 	CachedSchemaClass = nullptr;
 	ArrayIndex = 0;
 #endif
-}
-
-void FSMGraphProperty_Base::Initialize(UObject* Instance)
-{
-	GraphEvaluator.Initialize(Instance);
-}
-
-void FSMGraphProperty_Base::Execute(void* Params)
-{
-	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("SMGraphProperty_Base::Execute"), STAT_SMGraphProperty_Base_Execute, STATGROUP_LogicDriver);
-	
-	GraphEvaluator.Execute(Params);
-
-	// If set then the graph evaluator is actually executing a graph from the linked property.
-	// We should copy the result value into this property.
-	if(LinkedProperty)
-	{
-		SetResult(LinkedProperty->GetResult());
-	}
-}
-
-void FSMGraphProperty_Base::Reset()
-{
-	GraphEvaluator.Reset();
-}
-
-void FSMGraphProperty_Base::InvalidateGuid()
-{
-	Guid.Invalidate();
 }
 
 const FGuid& FSMGraphProperty_Base::SetGuid(const FGuid& NewGuid)
@@ -147,15 +164,9 @@ const FGuid& FSMGraphProperty_Base::GenerateNewGuidIfNotValid()
 	return Guid;
 }
 
-const FGuid& FSMGraphProperty_Base::SetOwnerGuid(const FGuid& NewGuid)
+void FSMGraphProperty_Base::InvalidateGuid()
 {
-	OwnerGuid = NewGuid;
-	return OwnerGuid;
-}
-
-const FGuid& FSMGraphProperty_Base::GetOwnerGuid() const
-{
-	return OwnerGuid;
+	Guid.Invalidate();
 }
 
 const FGuid& FSMGraphProperty_Base::SetTemplateGuid(const FGuid& NewGuid, bool bRefreshGuid)

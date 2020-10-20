@@ -162,7 +162,7 @@ public:
 	/** The default node instance class. Each derived node class needs to implement. */
 	virtual UClass* GetDefaultNodeInstanceClass() const { return nullptr; }
 	
-	void AddVariableGraphProperty(const FSMGraphProperty_Base& GraphProperty);
+	void AddVariableGraphProperty(const FSMGraphProperty_Base_Runtime& GraphProperty);
 
 	void SetNodeName(const FString& Name);
 	const FString& GetNodeName() const { return NodeName; }
@@ -245,11 +245,11 @@ protected:
 	USMNodeInstance* NodeInstance;
 
 	/** Custom graph structs with special handling. Dynamically loaded on initialization from embedded structs. */
-	TArray<FSMGraphProperty_Base*> GraphProperties;
+	TArray<FSMGraphProperty_Base_Runtime*> GraphProperties;
 
 	/** Set by the BP compiler. Contains data necessary to evaluate variables which have instanced BP graphs. */
 	UPROPERTY()
-	TArray<FSMGraphProperty_Base> VariableGraphProperties;
+	TArray<FSMGraphProperty_Base_Runtime> VariableGraphProperties;
 	
 	/** The class to use to construct the node instance if one exists. */
 	UPROPERTY(BlueprintReadWrite, Category = "Node Class")

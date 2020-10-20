@@ -5,6 +5,9 @@ USMProjectEditorSettings::USMProjectEditorSettings()
 {
 	bUpdateAssetsOnStartup = true;
 	bDisplayAssetUpdateProgress = true;
+	bDisplayMemoryLimitsOnCompile = true;
+	bAlwaysDisplayStructMemoryUsage = false;
+	StructMemoryLimitWarningThreshold = 0.9f;
 	bValidateInstanceOnCompile = true;
 	bWarnIfChildrenAreOutOfDate = true;
 	bConfigureNewConduitsAsTransitions = true;

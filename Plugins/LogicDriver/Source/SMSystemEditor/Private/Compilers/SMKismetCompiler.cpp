@@ -193,6 +193,20 @@ void FSMKismetCompilerContext::CopyTermDefaultsToDefaultObject(UObject* DefaultO
 	// Treat the CDO as a template at first so we can purge all templates which will be regenerated below.
 	FSMBlueprintEditorUtils::CleanReferenceTemplates(DefaultInstance);
 
+	uint32 TotalSize = 0;
+	TSet<FName> NamesChecked;
+
+	auto CheckPropertySize = [&](FProperty* Property) -> uint32
+	{
+		if (NamesChecked.Contains(Property->GetFName()))
+		{
+			return 0;
+		}
+
+		NamesChecked.Add(Property->GetFName());
+		return Property->GetSize();
+	};
+	
 	// Patch up parent values so they can be accessed properly from the child.
 	if (bBlueprintIsDerived)
 	{
@@ -217,6 +231,8 @@ void FSMKismetCompilerContext::CopyTermDefaultsToDefaultObject(UObject* DefaultO
 						uint8* DestPtr = ChildStructProp->ContainerPtrToValuePtr<uint8>(DefaultObject);
 						check(SourcePtr && DestPtr);
 						RootStructProp->CopyCompleteValue(DestPtr, SourcePtr);
+
+						TotalSize += CheckPropertySize(ChildStructProp);
 					}
 				}
 			}
@@ -229,12 +245,13 @@ void FSMKismetCompilerContext::CopyTermDefaultsToDefaultObject(UObject* DefaultO
 		FProperty* TargetProperty = *It;
 		if (USMGraphK2Node_PropertyNode_Base* PropertyNode = Cast<USMGraphK2Node_PropertyNode_Base>(AllocatedNodePropertiesToNodes.FindRef(TargetProperty)))
 		{
-			const FStructProperty* SourceProperty = PropertyNode->GetPropertyNodeProperty();
+			const FStructProperty* SourceProperty = PropertyNode->GetRuntimePropertyNodeProperty();
 			check(SourceProperty);
 
 			uint8* DestinationPtr = TargetProperty->ContainerPtrToValuePtr<uint8>(DefaultObject);
 			uint8* SourcePtr = SourceProperty->ContainerPtrToValuePtr<uint8>(PropertyNode);
 			TargetProperty->CopyCompleteValue(DestinationPtr, SourcePtr);
+			TotalSize += CheckPropertySize(TargetProperty);
 		}
 	}
 
@@ -250,7 +267,8 @@ void FSMKismetCompilerContext::CopyTermDefaultsToDefaultObject(UObject* DefaultO
 			uint8* DestinationPtr = TargetProperty->ContainerPtrToValuePtr<uint8>(DefaultObject);
 			uint8* SourcePtr = SourceProperty->ContainerPtrToValuePtr<uint8>(RuntimeContainerNode);
 			TargetProperty->CopyCompleteValue(DestinationPtr, SourcePtr);
-
+			TotalSize += CheckPropertySize(TargetProperty);
+			
 			FSMNode_Base* RunTimeNode = (FSMNode_Base*)DestinationPtr;
 			// Template Storage
 			// Templates are manually placed directly on the CDO with the CDO as the property owner.
@@ -336,7 +354,7 @@ void FSMKismetCompilerContext::CopyTermDefaultsToDefaultObject(UObject* DefaultO
 									FSMGraphProperty_Base* PropertyNode = GraphPropertyNode->GetPropertyNodeChecked();
 									if (PropertyNode->ShouldAutoAssignVariable())
 									{
-										RunTimeNode->AddVariableGraphProperty(*PropertyNode);
+										RunTimeNode->AddVariableGraphProperty(*GraphPropertyNode->GetPropertyNodeChecked());
 									}
 								}
 							}
@@ -359,8 +377,26 @@ void FSMKismetCompilerContext::CopyTermDefaultsToDefaultObject(UObject* DefaultO
 	}
 
 	DefaultInstance->RootStateMachineGuid = NewSMBlueprintClass->GetRootGuid();
-
+	
 	const USMProjectEditorSettings* Settings = FSMBlueprintEditorUtils::GetProjectEditorSettings();
+
+	if (Settings->bDisplayMemoryLimitsOnCompile)
+	{
+		const uint32 MaxSize = 0x7FFFF;
+		uint32 Threshold = static_cast<uint32>(static_cast<float>(MaxSize) * Settings->StructMemoryLimitWarningThreshold);
+		if (TotalSize >= Threshold)
+		{
+			FString SizeMessage = FString::Printf(TEXT("Total size of struct properties: %i / %i. You are approaching the maximum size allowed in UE4 and will crash when this limit is reached.\
+\nConsider refactoring the state machine to use references to improve performance and reduce memory usage."), TotalSize, MaxSize);
+			MessageLog.Warning(*SizeMessage);
+		}
+		else if (Settings->bAlwaysDisplayStructMemoryUsage)
+		{
+			FString SizeMessage = FString::Printf(TEXT("Total size of struct properties: %i"), TotalSize);
+			MessageLog.Note(*SizeMessage);
+		}
+	}
+	
 	if (Settings->bValidateInstanceOnCompile && !Blueprint->bIsNewlyCreated && !Blueprint->HasAnyFlags(RF_NeedLoad | RF_NeedPostLoad))
 	{
 		ValidateDefaultObject(DefaultInstance);
@@ -463,7 +499,7 @@ void FSMKismetCompilerContext::ValidateDefaultObject(USMInstance* DefaultInstanc
 		TestStateMachine.SetNodeGuid(DefaultInstance->RootStateMachineGuid);
 		if (!USMUtils::GenerateStateMachine(TestInstance, TestStateMachine, Properties, true))
 		{
-			MessageLog.Error(TEXT("Error validating state machine @@"), Blueprint);
+			MessageLog.Error(TEXT("Error validating state machine @@."), Blueprint);
 
 			ISMSystemEditorModule& SMBlueprintEditorModule = FModuleManager::LoadModuleChecked<ISMSystemEditorModule>("SMSystemEditor");
 			if (SMBlueprintEditorModule.IsPlayingInEditor())
@@ -1117,6 +1153,9 @@ void FSMKismetCompilerContext::ProcessPropertyNodes()
 		if (!GraphProperty->ShouldGenerateGuidFromVariable())
 		{
 			GraphProperty->GenerateNewGuid();
+
+			// Make sure runtime property matches.
+			PropertyNode->ConfigureRuntimePropertyNode();
 		}
 
 		// Create the actual property for this node.
@@ -1474,7 +1513,7 @@ UK2Node_CustomEvent* FSMKismetCompilerContext::SetupPropertyEntry(USMGraphK2Node
 	}
 	else
 	{
-		VarSetNode = CreateSetter(PropertyNode, Property->GetFName(), PropertyNode->GetPropertyNodeType());
+		VarSetNode = CreateSetter(PropertyNode, Property->GetFName(), PropertyNode->GetRuntimePropertyNodeType());
 	}
 	
 	// The exec (entry pin) of the new variable assign node.
@@ -1680,7 +1719,7 @@ FStructProperty* FSMKismetCompilerContext::CreateRuntimeProperty(USMGraphK2Node_
 	const FString NodeVariableName = ClassScopeNetNameMap.MakeValidName(PropertyNode) + "_" + FGuid::NewGuid().ToString();
 	FEdGraphPinType NodeVariableType;
 	NodeVariableType.PinCategory = USMGraphK2Schema::PC_Struct;
-	NodeVariableType.PinSubCategoryObject = MakeWeakObjectPtr(const_cast<UScriptStruct*>(PropertyNode->GetPropertyNodeType()));
+	NodeVariableType.PinSubCategoryObject = MakeWeakObjectPtr(const_cast<UScriptStruct*>(PropertyNode->GetRuntimePropertyNodeType()));
 
 	FStructProperty* NewProperty = CastFieldChecked<FStructProperty>(CreateVariable(FName(*NodeVariableName), NodeVariableType));
 

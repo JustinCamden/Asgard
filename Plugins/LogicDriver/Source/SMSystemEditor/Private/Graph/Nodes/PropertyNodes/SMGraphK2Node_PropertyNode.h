@@ -37,12 +37,21 @@ public:
 	// USMGraphK2Node_RuntimeNodeReference
 	virtual void PreCompileValidate(FCompilerResultsLog& MessageLog) override;
 	// ~USMGraphK2Node_RuntimeNodeReference
-	
+
+	/** Retrieve the property graph where this property node is located. */
 	USMPropertyGraph* GetPropertyGraph() const { return Cast<USMPropertyGraph>(GetGraph()); }
+
+	/** Allow runtime properties to set their values from their editor counterparts. */
+	virtual void ConfigureRuntimePropertyNode() {}
 	
 	/** Get the runtime graph property. */
+	virtual FSMGraphProperty_Base_Runtime* GetRuntimePropertyNode() { return nullptr; }
+	FSMGraphProperty_Base_Runtime* GetRuntimePropertyNodeChecked() { FSMGraphProperty_Base_Runtime* Node = GetRuntimePropertyNode(); check(Node); return Node; }
+	
+	/** Get the editor property node. */
 	virtual FSMGraphProperty_Base* GetPropertyNode() { return nullptr; }
-	/** Get the runtime graph property. */
+	
+	/** Get the editor graph property. */
 	FSMGraphProperty_Base* GetPropertyNodeChecked() { FSMGraphProperty_Base* Node = GetPropertyNode(); check(Node); return Node; }
 	FSMGraphProperty_Base* GetPropertyNodeConst() const { return const_cast<USMGraphK2Node_PropertyNode_Base*>(this)->GetPropertyNode(); }
 	FSMGraphProperty_Base* GetPropertyNodeConstChecked() const { FSMGraphProperty_Base* Node = GetPropertyNodeConst(); check(Node); return Node; }
@@ -56,9 +65,11 @@ public:
 	/** Sets the pin default value from the property default value. */
 	virtual void SetPinValueFromPropertyDefaults(bool bUpdateTemplateDefaults = false);
 	/** Get the runtime graph property type. */
-	UScriptStruct* GetPropertyNodeType() const;
+	UScriptStruct* GetRuntimePropertyNodeType() const;
 	/** Get the runtime graph property as a FStructProperty. */
-	FStructProperty* GetPropertyNodeProperty() const;
+	FStructProperty* GetRuntimePropertyNodeProperty() const;
+	/** Return either a runtime property node only or an editor property node. */
+	FStructProperty* GetPropertyNodeProperty(bool bRuntimeOnly) const;
 	/** The template which owns this property. */
 	USMNodeInstance* GetOwningTemplate() const;
 	/** The blueprint of the template owning this property. */

@@ -24,6 +24,20 @@ void USMGraphK2Node_TextPropertyNode::AllocateDefaultPins()
 	CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Text, TEXT("Result"));
 }
 
+void USMGraphK2Node_TextPropertyNode::ConfigureRuntimePropertyNode()
+{
+	RuntimeTextProperty.GraphEvaluator = TextProperty.GraphEvaluator;
+	RuntimeTextProperty.SetGuid(TextProperty.GetGuid());
+	RuntimeTextProperty.SetOwnerGuid(TextProperty.GetOwnerGuid());
+	RuntimeTextProperty.TextSerializer = TextProperty.TextSerializer;
+	RuntimeTextProperty.Result = TextProperty.Result;
+}
+
+FSMGraphProperty_Base_Runtime* USMGraphK2Node_TextPropertyNode::GetRuntimePropertyNode()
+{
+	return &RuntimeTextProperty;
+}
+
 TSharedPtr<SSMGraphProperty_Base> USMGraphK2Node_TextPropertyNode::GetGraphNodeWidget() const
 {
 	return SNew(SSMTextProperty)

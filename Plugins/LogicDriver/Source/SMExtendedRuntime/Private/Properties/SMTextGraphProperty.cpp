@@ -1,6 +1,11 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 #include "SMTextGraphProperty.h"
 
+void FSMTextGraphProperty_Runtime::SetResult(uint8* Value)
+{
+	Result = *(FText*)Value;
+}
+
 
 FSMTextGraphProperty::FSMTextGraphProperty() : Super()
 {

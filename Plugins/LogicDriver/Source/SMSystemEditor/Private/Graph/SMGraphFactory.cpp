@@ -91,7 +91,8 @@ class FConnectionDrawingPolicy* FSMGraphPinConnectionFactory::CreateConnectionPo
 {
 	if (Schema->IsA(USMGraphK2Schema::StaticClass()))
 	{
-		return new FSMGraphK2ConnectionDrawingPolicy(InBackLayerID, InFrontLayerID, ZoomFactor, InClippingRect, InDrawElements, InGraphObj);
+		// Need to call parent for other connection policies like Electronic Nodes to work on K2 graphs.
+		return FGraphPanelPinConnectionFactory::CreateConnectionPolicy(Schema, InBackLayerID, InFrontLayerID, ZoomFactor, InClippingRect, InDrawElements, InGraphObj);
 	}
 
 	if (Schema->IsA(USMGraphSchema::StaticClass()))

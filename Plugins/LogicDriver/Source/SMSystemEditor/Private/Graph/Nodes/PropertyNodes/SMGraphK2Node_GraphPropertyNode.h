@@ -10,6 +10,9 @@ class SMSYSTEMEDITOR_API USMGraphK2Node_GraphPropertyNode : public USMGraphK2Nod
 	GENERATED_UCLASS_BODY()
 
 public:
+
+	UPROPERTY()
+	FSMGraphProperty_Runtime RuntimeGraphProperty;
 	
 	UPROPERTY(EditAnywhere, Category = "Graph Property")
 	FSMGraphProperty GraphProperty;
@@ -19,6 +22,8 @@ public:
 	// ~UedGraphNode
 	
 	// USMGraphK2Node_PropertyNode
+	virtual void ConfigureRuntimePropertyNode() override;
+	virtual FSMGraphProperty_Base_Runtime* GetRuntimePropertyNode() override;
 	virtual FSMGraphProperty_Base* GetPropertyNode() override { return &GraphProperty; }
 	virtual void SetPropertyNode(FSMGraphProperty_Base* NewNode) override { GraphProperty = *(FSMGraphProperty*)NewNode; }
 	virtual TSharedPtr<SSMGraphProperty_Base> GetGraphNodeWidget() const override;

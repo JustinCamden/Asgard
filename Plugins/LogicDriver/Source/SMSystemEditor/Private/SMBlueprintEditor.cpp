@@ -21,6 +21,7 @@
 #include "Graph/Nodes/SMGraphNode_ConduitNode.h"
 #include "Graph/Nodes/SMGraphNode_StateMachineParentNode.h"
 #include "Graph/SMPropertyGraph.h"
+#include "Utilities/SMVersionUtils.h"
 
 
 #define LOCTEXT_NAMESPACE "SMEditor"
@@ -42,6 +43,9 @@ FSMBlueprintEditor::~FSMBlueprintEditor()
 
 void FSMBlueprintEditor::InitSMBlueprintEditor(const EToolkitMode::Type Mode, const TSharedPtr< IToolkitHost >& InitToolkitHost, USMBlueprint* Blueprint)
 {
+	// Blueprint is already current unless it was saved by a newer version of the plugin.
+	FSMVersionUtils::SetToLatestVersion(Blueprint);
+	
 	LoadedBlueprint = MakeWeakObjectPtr(Blueprint);
 	
 	if (!Toolbar.IsValid())

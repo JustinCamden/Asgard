@@ -29,27 +29,27 @@ public:
 
 	/** Entry node to state machine. */
 	UPROPERTY()
-	bool bIsRootNode;
+	uint32 bIsRootNode: 1;
 
 	/** Always call state update at least once before ending. */
 	UPROPERTY()
-	bool bAlwaysUpdate;
+	uint32 bAlwaysUpdate: 1;
 
 	/** Allows transitions to be evaluated in the same tick as Start State. */
 	UPROPERTY()
-	bool bEvalTransitionsOnStart;
+	uint32 bEvalTransitionsOnStart: 1;
 
 	/** Prevents conditional transitions for this state from being evaluated on Tick. */
 	UPROPERTY()
-	bool bDisableTickTransitionEvaluation;
+	uint32 bDisableTickTransitionEvaluation: 1;
 
 	/** If the state should remain active even after a transition is taken from this state. */
 	UPROPERTY()
-	bool bStayActiveOnStateChange;
+	uint32 bStayActiveOnStateChange: 1;
 
 	/** If this state can be reentered from a parallel state if this state is already active. */
 	UPROPERTY()
-	bool bAllowParallelReentry;
+	uint32 bAllowParallelReentry: 1;
 
 	/** When the owning blueprint's root state machine starts. */
 	UPROPERTY()

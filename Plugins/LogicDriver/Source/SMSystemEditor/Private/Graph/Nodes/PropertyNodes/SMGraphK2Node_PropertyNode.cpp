@@ -117,6 +117,9 @@ void USMGraphK2Node_PropertyNode_Base::PreCompileValidate(FCompilerResultsLog& M
 {
 	Super::PreCompileValidate(MessageLog);
 
+	// Update the runtime node from the editor node.
+	ConfigureRuntimePropertyNode();
+	
 	FSMGraphProperty_Base* GraphProperty = GetPropertyNodeConstChecked();
 	if(GraphProperty->ShouldAutoAssignVariable())
 	{
@@ -244,33 +247,36 @@ void USMGraphK2Node_PropertyNode_Base::SetPinValueFromPropertyDefaults(bool bUpd
 	}
 }
 
-UScriptStruct* USMGraphK2Node_PropertyNode_Base::GetPropertyNodeType() const
+UScriptStruct* USMGraphK2Node_PropertyNode_Base::GetRuntimePropertyNodeType() const
 {
-	UScriptStruct* BaseClass = FSMGraphProperty_Base::StaticStruct();
-
-	for (TFieldIterator<FProperty> PropIt(GetClass(), EFieldIteratorFlags::IncludeSuper); PropIt; ++PropIt)
+	if (FStructProperty* StructProperty = GetRuntimePropertyNodeProperty())
 	{
-		if (FStructProperty* StructProp = CastField<FStructProperty>(*PropIt))
-		{
-			if (StructProp->Struct->IsChildOf(BaseClass))
-			{
-				return StructProp->Struct;
-			}
-		}
+		return StructProperty->Struct;
 	}
 
 	return nullptr;
 }
 
-FStructProperty* USMGraphK2Node_PropertyNode_Base::GetPropertyNodeProperty() const
+FStructProperty* USMGraphK2Node_PropertyNode_Base::GetRuntimePropertyNodeProperty() const
 {
-	UScriptStruct* BaseFStruct = FSMGraphProperty_Base::StaticStruct();
+	if (FStructProperty* StructProperty = GetPropertyNodeProperty(true))
+	{
+		return StructProperty;
+	}
+
+	return GetPropertyNodeProperty(false);
+}
+
+FStructProperty* USMGraphK2Node_PropertyNode_Base::GetPropertyNodeProperty(bool bRuntimeOnly) const
+{
+	UScriptStruct* BaseFStruct = FSMGraphProperty_Base_Runtime::StaticStruct();
+	UScriptStruct* ExcludeClass = FSMGraphProperty_Base::StaticStruct();
 
 	for (TFieldIterator<FProperty> PropIt(GetClass(), EFieldIteratorFlags::IncludeSuper); PropIt; ++PropIt)
 	{
 		if (FStructProperty* StructProp = CastField<FStructProperty>(*PropIt))
 		{
-			if (StructProp->Struct->IsChildOf(BaseFStruct))
+			if (StructProp->Struct->IsChildOf(BaseFStruct) && (!bRuntimeOnly || !StructProp->Struct->IsChildOf(ExcludeClass)))
 			{
 				return StructProp;
 			}

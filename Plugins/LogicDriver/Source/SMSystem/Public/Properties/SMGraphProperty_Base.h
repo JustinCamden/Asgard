@@ -42,11 +42,11 @@ private:
 };
 
 /**
- * The base struct for graph properties exposed on a node.
- * Any graph property types should inherit from this.
+ * The base graph properties containing the bare essentials for run-time.
+ * Any run-time graph property types should inherit from this.
  */
 USTRUCT()
-struct SMSYSTEM_API FSMGraphProperty_Base
+struct SMSYSTEM_API FSMGraphProperty_Base_Runtime
 {
 public:
 	GENERATED_USTRUCT_BODY()
@@ -54,8 +54,8 @@ public:
 	UPROPERTY()
 	FSMExposedFunctionHandler GraphEvaluator;
 	
-	FSMGraphProperty_Base();
-	virtual ~FSMGraphProperty_Base() = default;
+	FSMGraphProperty_Base_Runtime();
+	virtual ~FSMGraphProperty_Base_Runtime() = default;
 	
 	virtual void Initialize(UObject* Instance);
 	virtual void Execute(void* Params = nullptr);
@@ -64,16 +64,61 @@ public:
 	virtual uint8* GetResult() const { return nullptr; }
 	virtual void SetResult(uint8* Value) {}
 
-	void InvalidateGuid();
-	const FGuid& SetGuid(const FGuid& NewGuid);
+	virtual const FGuid& SetGuid(const FGuid& NewGuid);
+	const FGuid& GetGuid() const { return Guid; }
+	virtual const FGuid& SetOwnerGuid(const FGuid& NewGuid);
+	
+	/** Returns the graph property owner of this node. Likely itself. */
+	const FGuid& GetOwnerGuid() const { return OwnerGuid; }
+
+	/** If set then the linked property is the one that is actually executing, but this struct is the one being read from. */
+	FSMGraphProperty_Base_Runtime* LinkedProperty;
+	
+protected:
+	UPROPERTY(meta = (IgnoreForMemberInitializationTest))
+	FGuid Guid;
+
+	/** The graph property owner. If this struct is defined within a node class and instanced
+	 * to a state machine then the guid of class CDO is the owner. */
+	UPROPERTY(meta = (IgnoreForMemberInitializationTest))
+	FGuid OwnerGuid;
+};
+
+/**
+ * Graph properties which represent a variable exposed on a node. Only for run-time use.
+ */
+USTRUCT()
+struct SMSYSTEM_API FSMGraphProperty_Runtime : public FSMGraphProperty_Base_Runtime
+{
+public:
+	GENERATED_USTRUCT_BODY()
+
+	FSMGraphProperty_Runtime();
+};
+
+
+/**
+ * EDITOR: The base struct for graph properties exposed on a node. Contains additional properties for configuration and compilation.
+ * Any graph property types should inherit from this.
+ */
+USTRUCT()
+struct SMSYSTEM_API FSMGraphProperty_Base : public FSMGraphProperty_Base_Runtime
+{
+public:
+	GENERATED_USTRUCT_BODY()
+	
+	FSMGraphProperty_Base();
+	virtual ~FSMGraphProperty_Base() = default;
+	
+	// FSMGraphProperty_Base_Runtime
+	virtual const FGuid& SetGuid(const FGuid& NewGuid) override;
+	// ~FSMGraphProperty_Base_Runtime
 	const FGuid& SetGuid(const FGuid& NewGuid, int32 Index, bool bCountTemplate = true);
 	const FGuid& GenerateNewGuid();
 	const FGuid& GenerateNewGuidIfNotValid();
-	const FGuid& GetGuid() const { return Guid; }
-	const FGuid& SetOwnerGuid(const FGuid& NewGuid);
-	/** Returns the graph property owner of this node. Likely itself. */
-	const FGuid& GetOwnerGuid() const;
 
+	void InvalidateGuid();
+	
 	const FGuid& SetTemplateGuid(const FGuid& NewGuid, bool bRefreshGuid = false);
 	const FGuid& GetTemplateGuid() const { return TemplateGuid; }
 
@@ -83,9 +128,6 @@ public:
 	virtual bool ShouldAutoAssignVariable() const { return VariableName != NAME_None; }
 	/** Checked during duplication if the guid should be assigned from the variable. */
 	virtual bool ShouldGenerateGuidFromVariable() const { return ShouldAutoAssignVariable(); }
-	
-	/** If set then the linked property is the one that is actually executing, but this struct is the one being read from. */
-	FSMGraphProperty_Base* LinkedProperty;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Variable")
 	FName VariableName;
@@ -142,17 +184,9 @@ protected:
 #endif
 	
 protected:
-	UPROPERTY(meta = (IgnoreForMemberInitializationTest))
-	FGuid Guid;
-
 	/** The guid without the template. */
 	UPROPERTY(meta = (IgnoreForMemberInitializationTest))
 	FGuid GuidUnmodified;
-
-	/** The graph property owner. If this struct is defined within a node class and instanced
-	 * to a state machine then the guid of class CDO is the owner. */
-	UPROPERTY(meta = (IgnoreForMemberInitializationTest))
-	FGuid OwnerGuid;
 
 	/** The guid of the template this belongs to. */
 	UPROPERTY(meta = (IgnoreForMemberInitializationTest))
@@ -162,9 +196,8 @@ protected:
 	int32 GuidIndex;
 };
 
-
 /**
- * Graph properties which represent a variable exposed on a node.
+ * EDITOR: Graph properties which represent a variable exposed on a node. Contains additional properties for configuration and compilation.
  */
 USTRUCT()
 struct SMSYSTEM_API FSMGraphProperty : public FSMGraphProperty_Base

@@ -18,11 +18,11 @@ struct SMSYSTEM_API FSMConduit : public FSMState_Base
 //#pragma region Blueprint Graph Exposed
 	/** Set from graph execution. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Result, meta = (AlwaysAsPin))
-	bool bCanEnterTransition;
+	uint32 bCanEnterTransition: 1;
 
 	/** Set from graph execution or configurable from details panel. Must be true for the conduit to be evaluated. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Transition)
-	bool bCanEvaluate;
+	uint32 bCanEvaluate: 1;
 	
 	/**
 	 * This conduit will be evaluated with inbound and outbound transitions.
@@ -30,7 +30,7 @@ struct SMSYSTEM_API FSMConduit : public FSMState_Base
 	 * state leading to this conduit will not take this transition.
 	 */
 	UPROPERTY()
-	bool bEvalWithTransitions;
+	uint32 bEvalWithTransitions: 1;
 
 	/** Entry point when the conduit is entered. */
 	UPROPERTY()
