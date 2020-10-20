@@ -312,5 +312,4 @@ private:
 	* Adjusts the position of the lash in the case of blocking hits.
 	*/
 	void CollideWithActorsInLashSegments(float DeltaTime, float PhysicsStepTime);
-		
 };
