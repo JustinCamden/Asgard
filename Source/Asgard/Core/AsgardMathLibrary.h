@@ -1,4 +1,4 @@
-  ﻿// Copyright © 2020 Justin Camden All Rights Reserved
+﻿// Copyright © 2020 Justin Camden All Rights Reserved
 
 #pragma once
 
