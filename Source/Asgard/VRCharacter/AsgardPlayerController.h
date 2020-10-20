@@ -15,4 +15,3 @@ class ASGARD_API AAsgardPlayerController : public AVRPlayerController
 	GENERATED_BODY()
 	
 };
-
