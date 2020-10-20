@@ -1,6 +1,5 @@
 ﻿// Copyright © 2020 Justin Camden All Rights Reserved
 
-
 #include "AsgardAbilityComponent.h"
 
 // Sets default values for this component's properties
