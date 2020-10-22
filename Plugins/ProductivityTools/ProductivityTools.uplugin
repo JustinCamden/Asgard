@@ -1,0 +1,29 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.1",
+	"FriendlyName": "ProductivityTools",
+	"Description": "Tools to help you to organize your project",
+	"Category": "Other",
+	"CreatedBy": "IsaraTech.",
+	"CreatedByURL": "http://www.isaratech.com",
+	"DocsURL": "https://docs.isaratech.com/ue4-plugins/productivity-tools",
+	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/079e924bb6314fdeaa185e8743809df8",
+	"SupportURL": "",
+	"EngineVersion": "4.25.0",
+	"CanContainContent": false,
+	"Installed": true,
+	"Modules": [
+		{
+			"Name": "ProductivityTools",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit",
+			"WhitelistPlatforms": [
+				"Win64",
+				"Win32",
+				"Mac",
+				"Linux"
+			]
+		}
+	]
+}
