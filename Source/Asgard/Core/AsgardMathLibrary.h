@@ -6,9 +6,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "AsgardMathLibrary.generated.h"
 
-/**
- * Library for commonly used math functions.
- */
+/** Library for commonly used math functions. */
 UCLASS()
 class ASGARD_API UAsgardMathLibrary : public UBlueprintFunctionLibrary
 {
@@ -27,7 +25,7 @@ public:
 	* Assumes the inputs are normalized.
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardMathLibrary)
-	static float AngleBetweenVectors(const FVector& ANormalized, const FVector& BNormalized);
+	float AngleBetweenVectors(const FVector& ANormalized, const FVector& BNormalized);
 
 	/**
 	* Rotates a unit vector towards another vector at a speed of RotationSpeed in degrees.
@@ -37,4 +35,26 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardMathLibrary)
 	static FVector RotateVectorTowardsVector(const FVector& StartNormalized, const FVector& TargetNormalized, float RotationSpeed, float DeltaTime, float MaxErrorAngle);
 
+	/** Inverts the handedness of a rotation, changing left handed to right handed and vice versa. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardMathLibrary)
+	static FRotator InvertRotationHandedness(const FRotator& RotationToInvert);
+
+	/** Inverts the handedness of a transform, changing left handed to right handed and vice versa. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardMathLibrary)
+	static FTransform InvertTransformHandedness(const FTransform& TransformToInvert);
 };
+
+FORCEINLINE float UAsgardMathLibrary::AngleBetweenVectorsRadians(const FVector& ANormalized, const FVector& BNormalized)
+{
+	return FMath::Acos(ANormalized | BNormalized);
+}
+
+FORCEINLINE float UAsgardMathLibrary::AngleBetweenVectors(const FVector& ANormalized, const FVector& BNormalized)
+{
+	return FMath::RadiansToDegrees(FMath::Acos(ANormalized | BNormalized));
+}
+
+FORCEINLINE FRotator UAsgardMathLibrary::InvertRotationHandedness(const FRotator& RotationToInvert)
+{
+	return FRotator(RotationToInvert.Pitch, RotationToInvert.Yaw * -1.0f, RotationToInvert.Roll * -1.0f);
+}
