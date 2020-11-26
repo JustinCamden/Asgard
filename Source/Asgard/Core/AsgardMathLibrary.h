@@ -42,6 +42,10 @@ public:
 	/** Inverts the handedness of a transform, changing left handed to right handed and vice versa. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardMathLibrary)
 	static FTransform InvertTransformHandedness(const FTransform& TransformToInvert);
+
+	/** Inverts the handedness of a transform, changing left handed to right handed and vice versa. Does not affect scale. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardMathLibrary)
+	static FTransform InvertTransformHandednessNoScale(const FTransform& TransformToInvert);
 };
 
 FORCEINLINE float UAsgardMathLibrary::AngleBetweenVectorsRadians(const FVector& ANormalized, const FVector& BNormalized)

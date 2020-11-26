@@ -11,9 +11,16 @@ FVector UAsgardMathLibrary::RotateVectorTowardsVector(const FVector& StartNormal
 
 FTransform UAsgardMathLibrary::InvertTransformHandedness(const FTransform& TransformToInvert)
 {
-	// Location
 	FVector InvertedY = FVector(1.0f, -1.0f, 1.0f);
 	return FTransform(InvertRotationHandedness(TransformToInvert.GetRotation().Rotator()), 
 		InvertedY * TransformToInvert.GetLocation(), 
+		InvertedY * TransformToInvert.GetScale3D());
+}
+
+FTransform UAsgardMathLibrary::InvertTransformHandednessNoScale(const FTransform& TransformToInvert)
+{
+	FVector InvertedY = FVector(1.0f, -1.0f, 1.0f);
+	return FTransform(InvertRotationHandedness(TransformToInvert.GetRotation().Rotator()),
+		InvertedY * TransformToInvert.GetLocation(),
 		TransformToInvert.GetScale3D());
 }
