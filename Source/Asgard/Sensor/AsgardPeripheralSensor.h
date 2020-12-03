@@ -29,31 +29,31 @@ public:
 	* The maximum number of primitives to track. 
 	* Ignored if <= 0.
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AsgardPeripheralSensor)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Asgard|PeripheralSensor")
 	int32 MaxTrackedPoints;
 
 	/**
 	* The minimum angle from the front or back of the Sensor for an object to be considered in the Sensor's periphery.
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AsgardPeripheralSensor)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Asgard|PeripheralSensor")
 	float Min3DAngleFromSensor;
 
 	/**
 	* The minimum distance from the Sensor for an object to be considered in the Sensor's periphery.
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AsgardPeripheralSensor)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Asgard|PeripheralSensor")
 	float MinDistanceFromSensor;
 
 	/**
 	* The minimum 2D angle between the nearest points on tracked primitives, measured across the Sensor plane.
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AsgardPeripheralSensor)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Asgard|PeripheralSensor")
 	float Min2DAngleBetweenTrackedPoints;
 
 private:
 	/**
 	* Current list of the nearest points on tracked primitives.
 	*/
-	UPROPERTY(BlueprintReadOnly, Category = AsgardPeripheralSensor, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Asgard|PeripheralSensor", meta = (AllowPrivateAccess = "true"))
 	TArray<float> RollAnglesToNearestTrackedPoints;
 };

@@ -15,7 +15,7 @@ class ASGARD_API UAsgardCollisionProfiles : public UObject
 	GENERATED_BODY()
 
 public:
-    UFUNCTION(BlueprintCallable, Category = AsgardCollisionProfiles)
+    UFUNCTION(BlueprintCallable, Category = "Asgard|CollisionProfiles")
     static const FName VRRoot();
 };
 

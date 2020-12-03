@@ -17,14 +17,14 @@ public:
 	* Returns the angle between two vectors in radians.
 	* Assumes the inputs are normalized.
 	*/
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardMathLibrary)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Asgard|MathLibrary")
 	static float AngleBetweenVectorsRadians(const FVector& ANormalized, const FVector& BNormalized);
 
 	/*
 	* Returns the angle between two vectors in degrees.
 	* Assumes the inputs are normalized.
 	*/
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardMathLibrary)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Asgard|MathLibrary")
 	float AngleBetweenVectors(const FVector& ANormalized, const FVector& BNormalized);
 
 	/**
@@ -32,19 +32,19 @@ public:
 	* Assumes both are normalized.
 	* @param MaxErrorAngle If > 0, then vector never be more than this many degrees away from the target
 	*/
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardMathLibrary)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Asgard|MathLibrary")
 	static FVector RotateVectorTowardsVector(const FVector& StartNormalized, const FVector& TargetNormalized, float RotationSpeed, float DeltaTime, float MaxErrorAngle);
 
 	/** Inverts the handedness of a rotation, changing left handed to right handed and vice versa. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardMathLibrary)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Asgard|MathLibrary")
 	static FRotator InvertRotationHandedness(const FRotator& RotationToInvert);
 
 	/** Inverts the handedness of a transform, changing left handed to right handed and vice versa. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardMathLibrary)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Asgard|MathLibrary")
 	static FTransform InvertTransformHandedness(const FTransform& TransformToInvert);
 
 	/** Inverts the handedness of a transform, changing left handed to right handed and vice versa. Does not affect scale. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardMathLibrary)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Asgard|MathLibrary")
 	static FTransform InvertTransformHandednessNoScale(const FTransform& TransformToInvert);
 };
 

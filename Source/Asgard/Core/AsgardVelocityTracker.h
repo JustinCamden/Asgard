@@ -34,16 +34,16 @@ public:
 	float VelocityAverageInterval = 0.05f;
 
 	/** If this scene component is valid, location changes will be offset by the location of said component. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AsgardVelocityTracker)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Asgard|VelocityTracker")
 	USceneComponent* OffsetComponent;
 
 private:
 	/** The location of the component on the last frame that tracking was active.*/
-	UPROPERTY(BlueprintReadOnly, Category = AsgardVelocityTracker, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Asgard|VelocityTracker", meta = (AllowPrivateAccess = "true"))
 	FVector LastLocation;
 
 	/** The calculated velocity of this component, in world space. */
-	UPROPERTY(BlueprintReadOnly, Category = AsgardVelocityTracker, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Asgard|VelocityTracker", meta = (AllowPrivateAccess = "true"))
 	FVector CalculatedVelocity;
 
 	TArray<FVector> FrameLocationHistory;

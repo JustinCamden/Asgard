@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Asgard/Core/AsgardOptionsTypes.h"
 #include "VRCharacter.h"
 #include "AsgardVRCharacter.generated.h"
 
@@ -14,46 +15,6 @@ DECLARE_MULTICAST_DELEGATE(FOnTeleportToLocationFinishedSignature)
 
 // Stats group
 DECLARE_STATS_GROUP(TEXT("AsgardVRCharacter"), STATGROUP_ASGARD_VRCharacter, STATCAT_Advanced);
-
-UENUM(BlueprintType)
-enum class EAsgardTeleportMode: uint8
-{
-	Fade,
-	Instant,
-	SmoothRate,
-	SmoothTime
-};
-
-UENUM(BlueprintType)
-enum class EAsgardGroundMovementMode : uint8
-{
-	PrecisionTeleportToLocation,
-	TeleportWalk,
-	SmoothWalk
-};
-
-UENUM(BlueprintType)
-enum class EAsgardOrientationMode : uint8
-{
-	Character,
-	LeftController,
-	RightController
-};
-
-UENUM(BlueprintType)
-enum class EAsgardFlightOrientationMode : uint8
-{
-	VRCamera,
-	LeftController,
-	RightController
-};
-
-UENUM(BlueprintType)
-enum class EAsgardBinaryHand : uint8
-{
-	LeftHand,
-	RightHand
-};
 
 UENUM(BlueprintType)
 enum class EAsgardInputAxisWeightMode: uint8
@@ -213,8 +174,8 @@ public:
 
 	/**
 	* The method of teleportation used for teleporting to a location.
+	* Fade: The camera will fade out, the player will be placed at the goal location, and then the camera will fade back in.
 	* Instant: Character is instantly placed at their goal location.
-	* Blink: Brief delay, before the character is placed at their goal location.
 	* SmoothRate: Character is smoothly interpolated to their goal location at a given rate.
 	* SmoothTime: Character is smoothly interpolated to their goal location over a given time.
 	*/
@@ -223,8 +184,8 @@ public:
 
 	/**
 	* The method of teleportation used for teleporting to a specific Rotation.
+	* Fade: The camera will fade out, the player will be placed at the goal Rotation, and then the camera will fade back in.
 	* Instant: Character is instantly placed at their goal Rotation.
-	* Blink: Brief delay, before the character is placed at their goal Rotation.
 	* SmoothRate: Character is smoothly interpolated to their goal Rotation at a given rate.
 	* SmoothTime: Character is smoothly interpolated to their goal Rotation over a given time.
 	*/
@@ -299,7 +260,7 @@ public:
 	//	Teleport turn settings
 
 	/** How many degrees to turn when performing a teleport turn. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AsgardVRCharacter|Movement|TeleportTurn", meta = (ClampMin = "0.01"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AsgardVRCharacter|Movement|TeleportTurn", meta = (ClampMin = "0.01", ClampMax = "180.0"))
 	float TeleportTurnAngleInterval;
 
 	/**

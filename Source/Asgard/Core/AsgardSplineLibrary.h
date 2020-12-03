@@ -17,7 +17,7 @@ class ASGARD_API UAsgardSplineLibrary : public UBlueprintFunctionLibrary
 	
 public:
 	/** Input a spline and ideal subdivision length to get number of subdivisions and calculated length. */
-	UFUNCTION(BlueprintCallable, Category = AsgardSplineLibrary)
+	UFUNCTION(BlueprintCallable, Category = "Asgard|SplineLibrary")
 	static void CalculateSplineSegmentNumAndLength(
 		const USplineComponent* Spline,
 		int32& OutNumSegments,
@@ -25,7 +25,7 @@ public:
 		float IdealSegmentLength = 100.0f);
 
 	/** Input a spline with segment index and section length to calculate start and end locations and tangents.*/
-	UFUNCTION(BlueprintCallable, Category = AsgardSplineLibrary)
+	UFUNCTION(BlueprintCallable, Category = "Asgard|SplineLibrary")
 		static void CalculateSplineSegmentStartAndEnd(
 			const USplineComponent* Spline,
 			FVector& StartLocation,
@@ -37,7 +37,7 @@ public:
 			const ESplineCoordinateSpace::Type CoordinateSpace = ESplineCoordinateSpace::Local);
 
 	/** Input a spline to calculate the rotation of a spline segment from the current 'Up Vector' to its end location. */
-	UFUNCTION(BlueprintPure, Category = AsgardSplineLibrary)
+	UFUNCTION(BlueprintPure, Category = "Asgard|SplineLibrary")
 		static float CalculateSplineUpRotation(
 			const USplineComponent* Spline,
 			const int32 SegmentIndex,
@@ -45,7 +45,7 @@ public:
 			const ESplineCoordinateSpace::Type CoordinateSpace = ESplineCoordinateSpace::World);
 
 	/** Input a spline and splinemesh to set its start and end along with twisting */
-	UFUNCTION(BlueprintCallable, Category = AsgardSplineLibrary)
+	UFUNCTION(BlueprintCallable, Category = "Asgard|SplineLibrary")
 		static void MatchSplineMeshToSpline(
 			const int& SegmentIndex,
 			const float& SegmentLength,
@@ -57,7 +57,7 @@ public:
 			bool UpdateMesh = false);
 
 	/** Input a Spline to offset with offset distance and rotation from the spline's up vector at each point. */
-	UFUNCTION(BlueprintCallable, Category = AsgardSplineLibrary)
+	UFUNCTION(BlueprintCallable, Category = "Asgard|SplineLibrary")
 		static void BuildOffsetSpline(
 			const USplineComponent* BaseSpline,
 			USplineComponent* OffsetSpline,
@@ -69,7 +69,7 @@ public:
 	* Outputs the length and count of each spline segment, base on the ideal length.
 	* Final spline should be heavily subdivided to avoid twisting.
 	*/
-	UFUNCTION(BlueprintCallable, Category = AsgardSplineLibrary)
+	UFUNCTION(BlueprintCallable, Category = "Asgard|SplineLibrary")
 		static void BuildCorrectedSpline(
 			const USplineComponent* BaseSpline,
 			const USplineComponent* OffsetSpline,
@@ -81,7 +81,7 @@ public:
 	* Outputs the length and count of each spline segment, base on the ideal length.
 	* Final spline should be heavily subdivided to avoid twisting.
 	*/
-	UFUNCTION(BlueprintCallable, Category = AsgardSplineLibrary)
+	UFUNCTION(BlueprintCallable, Category = "Asgard|SplineLibrary")
 		static void FixSplineTwist(
 			int32& OutNumSegments,
 			float& OutSegmentLength,

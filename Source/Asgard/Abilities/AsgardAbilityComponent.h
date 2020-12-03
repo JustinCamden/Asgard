@@ -20,31 +20,31 @@ public:
 	UAsgardAbilityComponent();
 
 	/** Activates the ability, including any necessary initialization.*/
-	UFUNCTION(BlueprintCallable, Category = AsgardAbilityComponent)
+	UFUNCTION(BlueprintCallable, Category = "Asgard|AbilityComponent")
 	void ActivateAbility();
 
 	/** Called when the ability is activated. */
-	UFUNCTION(BlueprintImplementableEvent, Category = AsgardAbilityComponent)
+	UFUNCTION(BlueprintImplementableEvent, Category = "Asgard|AbilityComponent")
 	void OnAbilityActivated();
 
 	/** Called when the ability is activated. */
-	UPROPERTY(BlueprintAssignable, Category = AsgardAbilityComponent, meta = (DisplayName = "On Ability Activated"))
+	UPROPERTY(BlueprintAssignable, Category = "Asgard|AbilityComponent", meta = (DisplayName = "On Ability Activated"))
 	FOnAbilityActivatedSignature NotifyAbilityActivated;
 
 	/** Deactivates the ability, including any necessary de-initialization.*/
-	UFUNCTION(BlueprintCallable, Category = AsgardAbilityComponent)
+	UFUNCTION(BlueprintCallable, Category = "Asgard|AbilityComponent")
 	void DeactivateAbility();
 
 	/** Called when the ability is deactivated. */
-	UFUNCTION(BlueprintImplementableEvent, Category = AsgardAbilityComponent)
+	UFUNCTION(BlueprintImplementableEvent, Category = "Asgard|AbilityComponent")
 	void OnAbilityDeactivated();
 
 	/** Called when the ability is deactivated. */
-	UPROPERTY(BlueprintAssignable, Category = AsgardAbilityComponent, meta = (DisplayName = "On Ability Deactivated"))
+	UPROPERTY(BlueprintAssignable, Category = "Asgard|AbilityComponent", meta = (DisplayName = "On Ability Deactivated"))
 	FOnAbilityDeactivatedSignature NotifyAbilityDeactivated;
 
 private:
 	/** Whether this ability is currently active. */
-	UPROPERTY(BlueprintReadOnly, Category = AsgardAbilityComponent, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Asgard|AbilityComponent", meta = (AllowPrivateAccess = "true"))
 	bool bIsAbilityActive;
 };

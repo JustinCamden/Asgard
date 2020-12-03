@@ -14,28 +14,28 @@ class ASGARD_API UAsgardInputBindings : public UObject
 {
 	GENERATED_BODY()
 public:
-    UFUNCTION(BlueprintCallable, Category = AsgardInputBindings)
+    UFUNCTION(BlueprintCallable, Category = "Asgard|InputBindings")
     static const FName MoveForwardAxis();
 
-    UFUNCTION(BlueprintCallable, Category = AsgardInputBindings)
+    UFUNCTION(BlueprintCallable, Category = "Asgard|InputBindings")
     static const FName MoveRightAxis();
 
-    UFUNCTION(BlueprintCallable, Category = AsgardInputBindings)
+    UFUNCTION(BlueprintCallable, Category = "Asgard|InputBindings")
     static const FName TurnForwardAxis();
 
-    UFUNCTION(BlueprintCallable, Category = AsgardInputBindings)
+    UFUNCTION(BlueprintCallable, Category = "Asgard|InputBindings")
     static const FName TurnRightAxis();
 
-    UFUNCTION(BlueprintCallable, Category = AsgardInputBindings)
+    UFUNCTION(BlueprintCallable, Category = "Asgard|InputBindings")
     static const FName FlightThrusterLeftAction();
 
-    UFUNCTION(BlueprintCallable, Category = AsgardInputBindings)
+    UFUNCTION(BlueprintCallable, Category = "Asgard|InputBindings")
     static const FName FlightThrusterRightAction();
 
-    UFUNCTION(BlueprintCallable, Category = AsgardInputBindings)
+    UFUNCTION(BlueprintCallable, Category = "Asgard|InputBindings")
     static const FName ToggleFlightAction();
 
-    UFUNCTION(BlueprintCallable, Category = AsgardInputBindings)
+    UFUNCTION(BlueprintCallable, Category = "Asgard|InputBindings")
     static const FName PrecisionTeleportAction();
 };
 

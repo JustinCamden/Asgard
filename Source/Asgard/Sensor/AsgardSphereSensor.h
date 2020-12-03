@@ -38,56 +38,56 @@ public:
 	/**
 	* Called when the sensor detects a new component.
 	*/
-	UPROPERTY(BlueprintAssignable, Category = AsgardSphereSensor)
+	UPROPERTY(BlueprintAssignable, Category = "Asgard|SphereSensor")
 	FOnComponentDetectedSignature OnComponentDetected;
 
 	/**
 	* Called when the sensor can no longer detect a previously detected component.
 	*/
-	UPROPERTY(BlueprintAssignable, Category = AsgardSphereSensor)
+	UPROPERTY(BlueprintAssignable, Category = "Asgard|SphereSensor")
 	FOnComponentLostSignature OnComponentLost;
 
 	/**
 	* Called when the sensor detects a new actor.
 	*/
-	UPROPERTY(BlueprintAssignable, Category = AsgardSphereSensor)
+	UPROPERTY(BlueprintAssignable, Category = "Asgard|SphereSensor")
 	FOnActorDetectedSignature OnActorDetected;
 
 	/**
 	* Called when the sensor can no longer detect a previously detected actor.
 	*/
-	UPROPERTY(BlueprintAssignable, Category = AsgardSphereSensor)
+	UPROPERTY(BlueprintAssignable, Category = "Asgard|SphereSensor")
 	FOnActorLostSignature OnActorLost;
 	
 	/**
 	* Radius of the sphere sensor.
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AsgardSphereSensor)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Asgard|SphereSensor")
 	float Radius;
 
 	/**
 	* Channel to filter for objects on.
 	* The sensor will detect blocking objects in this channel.
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AsgardSphereSensor)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Asgard|SphereSensor")
 	TEnumAsByte<ECollisionChannel> DetectionChannel;
 
 	/**
 	* Actors to ignore when checking for overlaps.
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AsgardSphereSensor)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Asgard|SphereSensor")
 	TArray<AActor*> IgnoredActors;
 
 	/**
 	* Whether to filter based on blocking hits.
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AsgardSphereSensor)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Asgard|SphereSensor")
 	bool bDetectBlockingHitsOnly;
 
 	/**
 	* Whether to automatically add the owner actor to ignored actors for every trace.
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AsgardSphereSensor)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Asgard|SphereSensor")
 	bool bAutoIgnoreOwner;
 
 	/**
@@ -95,27 +95,27 @@ public:
 	* If disabled, overlap tests will be more accurate, but slower.
 	* If enabled, overlap tests will be one frame out of date, but faster.
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AsgardSphereSensor)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Asgard|SphereSensor")
 	bool bUseAsyncOverlapTests;
 
 #if WITH_EDITORONLY_DATA
 	/**
 	* Whether to debug draw the sphere sensor.
 	*/
-	UPROPERTY(EditAnywhere, Category = AsgardSphereSensor)
+	UPROPERTY(EditAnywhere, Category = "Asgard|SphereSensor")
 	bool bDebugDrawSensor;
 #endif
 
 	/**
 	* Returns list of detected components.
 	*/
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardSphereSensor)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Asgard|SphereSensor")
 	const TSet<UPrimitiveComponent*>& GetDetectedComponents() const { return DetectedComponents; }
 
 	/**
 	* Returns list of detected actors.
 	*/
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardSphereSensor)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Asgard|SphereSensor")
 	const TSet<AActor*>& GetDetectedActors() const { return DetectedActors; }
 
 private:

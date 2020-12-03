@@ -45,13 +45,13 @@ public:
 	/**
 	* Sets the current movement mode
 	*/
-	UFUNCTION(BlueprintCallable, Category = AsgardVRMovementComponent)
+	UFUNCTION(BlueprintCallable, Category = "Asgard|VRMovementComponent")
 	void SetAsgardMovementMode(EAsgardMovementMode NewMovementMode);
 
 	/**
 	* Gets the current movement mode
 	*/
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = AsgardVRMovementComponent)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Asgard|VRMovementComponent")
 	const EAsgardMovementMode GetAsgardMovementMode() const;
 
 protected:
@@ -60,7 +60,7 @@ protected:
 	/**
 	* The current movement mode of this component
 	*/
-	UPROPERTY(BlueprintReadOnly, Category = AsgardVRMovementComponent)
+	UPROPERTY(BlueprintReadOnly, Category = "Asgard|VRMovementComponent")
 	EAsgardMovementMode AsgardMovementMode;
 
 private:
