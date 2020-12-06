@@ -71,7 +71,7 @@ void FSMBlueprintEditor::InitSMBlueprintEditor(const EToolkitMode::Type Mode, co
 	TArray<UBlueprint*> Blueprints;
 	Blueprints.Add(Blueprint);
 
-	CommonInitialization(Blueprints);
+	CommonInitialization(Blueprints, false);
 
 	TSharedPtr<FSMBlueprintEditor> Editor(SharedThis(this));
 
@@ -259,6 +259,12 @@ void FSMBlueprintEditor::ExtendMenu()
 	// add extensible menu if exists
 	ISMSystemEditorModule& SMBlueprintEditorModule = FModuleManager::LoadModuleChecked<ISMSystemEditorModule>("SMSystemEditor");
 	AddMenuExtender(SMBlueprintEditorModule.GetMenuExtensibilityManager()->GetAllExtenders(GetToolkitCommands(), GetEditingObjects()));
+
+	if (FSMBlueprintEditorUtils::GetProjectEditorSettings()->bEnableBlueprintMenuExtenders)
+	{
+		FBlueprintEditorModule& BlueprintEditorModule = FModuleManager::LoadModuleChecked<FBlueprintEditorModule>("Kismet");
+		AddMenuExtender(BlueprintEditorModule.GetMenuExtensibilityManager()->GetAllExtenders(GetToolkitCommands(), GetEditingObjects()));
+	}
 }
 
 void FSMBlueprintEditor::ExtendToolbar()
@@ -276,6 +282,12 @@ void FSMBlueprintEditor::ExtendToolbar()
 
 	ISMSystemEditorModule& SMBlueprintEditorModule = FModuleManager::LoadModuleChecked<ISMSystemEditorModule>("SMSystemEditor");
 	AddToolbarExtender(SMBlueprintEditorModule.GetToolBarExtensibilityManager()->GetAllExtenders(GetToolkitCommands(), GetEditingObjects()));
+
+	if (FSMBlueprintEditorUtils::GetProjectEditorSettings()->bEnableBlueprintToolbarExtenders)
+	{
+		FBlueprintEditorModule& BlueprintEditorModule = FModuleManager::LoadModuleChecked<FBlueprintEditorModule>("Kismet");
+		AddToolbarExtender(BlueprintEditorModule.GetMenuExtensibilityManager()->GetAllExtenders(GetToolkitCommands(), GetEditingObjects()));
+	}
 }
 
 void FSMBlueprintEditor::BindCommands()

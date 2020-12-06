@@ -3375,7 +3375,7 @@ FVector2D FSMEditableTextLayout::ComputeDesiredSize(float LayoutScaleMultiplier)
 		MarginValue.Right += CaretWidth;
 
 		const FVector2D HintTextSize = HintTextLayout->ComputeDesiredSize(
-			FSlateTextBlockLayout::FWidgetArgs(HintText, FText::GetEmpty(), WrapTextAt, AutoWrapText, WrappingPolicy, MarginValue, LineHeightPercentage, Justification),
+			FSlateTextBlockLayout::FWidgetArgs(HintText, FText::GetEmpty(), WrapTextAt, AutoWrapText, WrappingPolicy, ETextTransformPolicy::None, MarginValue, LineHeightPercentage, Justification),
 			LayoutScaleMultiplier, HintTextStyle
 		);
 
@@ -3537,6 +3537,17 @@ void FSMEditableTextLayout::FVirtualKeyboardEntry::SetSelectionFromVirtualKeyboa
 	OwnerLayout->bSelectionChangedExternally = true;
 	OwnerLayout->ExternalSelectionStart = InSelStart;
 	OwnerLayout->ExternalSelectionEnd = InSelEnd;
+}
+
+bool FSMEditableTextLayout::FVirtualKeyboardEntry::GetSelection(int& OutSelStart, int& OutSelEnd)
+{
+	const FTextLocation CursorInteractionPosition = OwnerLayout->CursorInfo.GetCursorInteractionLocation();
+	FTextLocation SelectionLocation = OwnerLayout->SelectionStart.Get(CursorInteractionPosition);
+	FTextSelection Selection(SelectionLocation, CursorInteractionPosition);
+
+	OutSelStart = Selection.GetBeginning().GetOffset();
+	OutSelEnd = Selection.GetEnd().GetOffset();
+	return true;
 }
 
 FText FSMEditableTextLayout::FVirtualKeyboardEntry::GetText() const

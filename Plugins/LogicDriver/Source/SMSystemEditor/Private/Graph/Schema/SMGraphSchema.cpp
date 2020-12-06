@@ -417,9 +417,20 @@ void USMGraphSchema::GetContextMenuActions(class UToolMenu* Menu, class UGraphNo
 			Section.AddMenuEntry(FGenericCommands::Get().Copy);
 			Section.AddMenuEntry(FGenericCommands::Get().Duplicate);
 
-			if (InGraphNode->bCanRenameNode)
+			if (bool bCanRename = InGraphNode->bCanRenameNode)
 			{
-				Section.AddMenuEntry(FGenericCommands::Get().Rename);
+				if (const USMGraphNode_Base* Node = Cast<USMGraphNode_Base>(InGraphNode))
+				{
+					if (USMStateInstance_Base* NodeInstance = Cast<USMStateInstance_Base>(Node->GetNodeTemplate()))
+					{
+						bCanRename = NodeInstance->ShouldDisplayNameWidget();
+					}
+				}
+
+				if (bCanRename)
+				{
+					Section.AddMenuEntry(FGenericCommands::Get().Rename);
+				}
 			}
 
 			if (!bIsDebugging)

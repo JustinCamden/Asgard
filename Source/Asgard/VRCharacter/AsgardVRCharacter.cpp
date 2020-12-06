@@ -351,6 +351,7 @@ void AAsgardVRCharacter::OnPrecisionTeleportActionReleased()
 
 void AAsgardVRCharacter::SetPrecisionTeleportOrientationComponent(EAsgardBinaryHand NewPrecisionTeleportOrientationMode)
 {
+	PrecisionTeleportOrientationMode = NewPrecisionTeleportOrientationMode;
 	if (NewPrecisionTeleportOrientationMode == EAsgardBinaryHand::LeftHand)
 	{
 		PrecisionTeleportOrientationComponent = LeftMotionController;

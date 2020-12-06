@@ -5,8 +5,8 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogLogicDriver, Log, All);
 
-#define LOG_INFO(FMT, ...) UE_LOG(LogLogicDriver, Log, (FMT), ##__VA_ARGS__)
-#define LOG_WARNING(FMT, ...) UE_LOG(LogLogicDriver, Warning, (FMT), ##__VA_ARGS__)
-#define LOG_ERROR(FMT, ...) UE_LOG(LogLogicDriver, Error, (FMT), ##__VA_ARGS__)
+#define LD_LOG_INFO(FMT, ...) UE_LOG(LogLogicDriver, Log, (FMT), ##__VA_ARGS__)
+#define LD_LOG_WARNING(FMT, ...) UE_LOG(LogLogicDriver, Warning, (FMT), ##__VA_ARGS__)
+#define LD_LOG_ERROR(FMT, ...) UE_LOG(LogLogicDriver, Error, (FMT), ##__VA_ARGS__)
 
 DECLARE_STATS_GROUP(TEXT("LogicDriver"), STATGROUP_LogicDriver, STATCAT_Advanced)

@@ -120,7 +120,7 @@ void FSMNode_Base::CreateNodeInstance()
 		TemplateInstance = USMUtils::FindTemplateFromInstance(OwningInstance, TemplateName);
 		if (TemplateInstance == nullptr)
 		{
-			LOG_ERROR(TEXT("Could not find node template %s for use on node %s from package %s. Loading defaults."), *TemplateName.ToString(), *GetNodeName(), *OwningInstance->GetName());
+			LD_LOG_ERROR(TEXT("Could not find node template %s for use on node %s from package %s. Loading defaults."), *TemplateName.ToString(), *GetNodeName(), *OwningInstance->GetName());
 		}
 	}
 
@@ -145,7 +145,7 @@ void FSMNode_Base::CreateStackInstances()
 		UObject* TemplateInstance = USMUtils::FindTemplateFromInstance(OwningInstance, StackTemplateName);
 		if (TemplateInstance == nullptr)
 		{
-			LOG_ERROR(TEXT("Could not find node stack template %s for use on node %s from package %s."), *StackTemplateName.ToString(), *GetNodeName(), *OwningInstance->GetName());
+			LD_LOG_ERROR(TEXT("Could not find node stack template %s for use on node %s from package %s."), *StackTemplateName.ToString(), *GetNodeName(), *OwningInstance->GetName());
 			continue;
 		}
 
@@ -160,7 +160,7 @@ void FSMNode_Base::SetNodeInstanceClass(UClass* NewNodeInstanceClass)
 {
 	if (NewNodeInstanceClass && !IsNodeInstanceClassCompatible(NewNodeInstanceClass))
 	{
-		LOG_ERROR(TEXT("Could not set node instance class %s on node %s. The types are not compatible."), *NewNodeInstanceClass->GetName(), *GetNodeName());
+		LD_LOG_ERROR(TEXT("Could not set node instance class %s on node %s. The types are not compatible."), *NewNodeInstanceClass->GetName(), *GetNodeName());
 		return;
 	}
 

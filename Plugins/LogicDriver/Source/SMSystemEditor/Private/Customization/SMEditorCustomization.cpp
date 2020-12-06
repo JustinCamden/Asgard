@@ -3,6 +3,7 @@
 #include "DetailCategoryBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "PropertyCustomizationHelpers.h"
+#include "SSearchableComboBox.h"
 #include "Graph/Nodes/SMGraphNode_StateMachineStateNode.h"
 #include "Graph/Nodes/SMGraphNode_StateMachineParentNode.h"
 #include "Graph/Nodes/SMGraphNode_TransitionEdge.h"
@@ -285,7 +286,7 @@ void FSMTransitionEdgeCustomization::CustomizeDetails(IDetailLayoutBuilder& Deta
 	}
 
 	AvailableDelegates.Reset();
-	AvailableDelegates.Add(MakeShareable(new FName(NAME_None)));
+	AvailableDelegates.Add(MakeShareable(new FString()));
 
 	if (UClass* DelegateOwnerClass = TransitionNode->GetSelectedDelegateOwnerClass())
 	{
@@ -293,7 +294,7 @@ void FSMTransitionEdgeCustomization::CustomizeDetails(IDetailLayoutBuilder& Deta
 		{
 			if (FMulticastDelegateProperty* Delegate = CastField<FMulticastDelegateProperty>(*It))
 			{
-				AvailableDelegates.Add(MakeShareable(new FName(Delegate->GetFName())));
+				AvailableDelegates.Add(MakeShareable(new FString(Delegate->GetName())));
 			}
 		}
 	}
@@ -323,18 +324,19 @@ void FSMTransitionEdgeCustomization::CustomizeDetails(IDetailLayoutBuilder& Deta
 			SAssignNew(DelegateButtonsRow, SHorizontalBox)
 			+ SHorizontalBox::Slot()
 			[
-				SNew(SComboBox<TSharedPtr<FName>>)
+				SNew(SSearchableComboBox)
 				.OptionsSource(&AvailableDelegates)
-				.OnGenerateWidget_Lambda([](TSharedPtr<FName> InItem)
+				.OnGenerateWidget_Lambda([](TSharedPtr<FString> InItem)
 				{
 					return SNew(STextBlock)
 					// The combo box selection text.
-					.Text(FText::FromName(*InItem));
+					.Text(FText::FromString(*InItem));
 				})
-				.OnSelectionChanged_Lambda([=](TSharedPtr<FName> Selection, ESelectInfo::Type)
+				.OnSelectionChanged_Lambda([=](TSharedPtr<FString> Selection, ESelectInfo::Type)
 				{
 					// When selecting a property from the drop down.
-					if (DelegatePropertyName->IsValidHandle()) {
+					if (DelegatePropertyName->IsValidHandle())
+					{
 						DelegatePropertyName->SetValue(*Selection);
 						ForceUpdate();
 					}
@@ -434,7 +436,7 @@ void FSMNodeInstanceCustomization::CustomizeDetails(IDetailLayoutBuilder& Detail
 void FSMNodeInstanceCustomization::ProcessNodeInstance(TWeakObjectPtr<USMGraphNode_Base> GraphNode, TArray<TSharedRef<IPropertyHandle>> TemplateProperties,
 	class USMNodeInstance* NodeInstance, FName ExposedPropertiesName, IDetailLayoutBuilder& DetailBuilder, IDetailChildrenBuilder* ChildrenBuilder)
 {
-	for (const TSharedRef<IPropertyHandle> TemplatePropertyHandle : TemplateProperties)
+	for (const TSharedRef<IPropertyHandle>& TemplatePropertyHandle : TemplateProperties)
 	{
 		if (FProperty* Property = TemplatePropertyHandle->GetProperty())
 		{
@@ -814,7 +816,7 @@ void FSMStateStackCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> S
 				{
 					// Check if the entire category should be hidden.
 					bool bAllCustomized = true;
-					for (const auto TemplateProperty : TemplateProperties)
+					for (const auto& TemplateProperty : TemplateProperties)
 					{
 						if (!TemplateProperty->IsCustomized())
 						{

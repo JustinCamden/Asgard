@@ -40,6 +40,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
 	void GetAllStateInstances(TArray<USMStateInstance_Base*>& StateInstances) const;
 
+	/** Return the entry states of the state machine. Generally one unless parallel states are used. */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|Node Instance")
+	void GetEntryStates(TArray<USMStateInstance_Base*>& EntryStates) const;
+	
 	// USMNodeInstance
 	/** Special handling to retrieve the real FSM node in the event this is a state machine reference. */
 	virtual const FSMNode_Base* GetOwningNodeContainer() const override;

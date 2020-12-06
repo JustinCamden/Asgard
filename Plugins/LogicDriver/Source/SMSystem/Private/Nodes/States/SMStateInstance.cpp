@@ -144,7 +144,7 @@ bool USMStateInstance_Base::SwitchToLinkedState(USMStateInstance_Base* NextState
 	{
 		if (!Node->IsActive())
 		{
-			LOG_WARNING(TEXT("Attempted to switch to linked state %s but this node %s is not currently active."), *NextStateInstance->GetName(), *Node->GetNodeName());
+			LD_LOG_WARNING(TEXT("Attempted to switch to linked state %s but this node %s is not currently active."), *NextStateInstance->GetName(), *Node->GetNodeName());
 			return false;
 		}
 
@@ -164,7 +164,7 @@ bool USMStateInstance_Base::SwitchToLinkedState(USMStateInstance_Base* NextState
 			}
 		}
 
-		LOG_WARNING(TEXT("Attempted to switch to linked state %s from %s but the node could not be found."), *NextStateInstance->GetName(), *Node->GetNodeName());
+		LD_LOG_WARNING(TEXT("Attempted to switch to linked state %s from %s but the node could not be found."), *NextStateInstance->GetName(), *Node->GetNodeName());
 	}
 
 	return false;

@@ -22,13 +22,13 @@ USMInstance* USMBlueprintUtils::CreateStateMachineInstanceInternal(TSubclassOf<U
 {
 	if (StateMachineClass.Get() == nullptr)
 	{
-		LOG_ERROR(TEXT("No state machine class provided to CreateStateMachineInstance for context: %s"), Context ? *Context->GetName() : TEXT("No Context"));
+		LD_LOG_ERROR(TEXT("No state machine class provided to CreateStateMachineInstance for context: %s"), Context ? *Context->GetName() : TEXT("No Context"));
 		return nullptr;
 	}
 
 	if (Template && Template->GetClass() != StateMachineClass)
 	{
-		LOG_ERROR(TEXT("Attempted to instantiate state machine with template of class %s but was expecting: %s. Try restarting the play session."), *Template->GetClass()->GetName(), *StateMachineClass->GetName());
+		LD_LOG_ERROR(TEXT("Attempted to instantiate state machine with template of class %s but was expecting: %s. Try restarting the play session."), *Template->GetClass()->GetName(), *StateMachineClass->GetName());
 		return nullptr;
 	}
 
@@ -66,7 +66,7 @@ bool USMUtils::GenerateStateMachine(UObject* Instance, FSMStateMachine& StateMac
 					TemplateInstance = Cast<USMInstance>(FindTemplateFromInstance(SMInstance, TemplateName));
 					if (TemplateInstance == nullptr)
 					{
-						LOG_ERROR(TEXT("Could not find reference template %s for use within state machine %s from package %s. Loading defaults."), *TemplateName.ToString(), *StateMachineOut.GetNodeName(), *Instance->GetName());
+						LD_LOG_ERROR(TEXT("Could not find reference template %s for use within state machine %s from package %s. Loading defaults."), *TemplateName.ToString(), *StateMachineOut.GetNodeName(), *Instance->GetName());
 					}
 					else if (TemplateInstance->GetClass() != StateMachineClassReference)
 					{
@@ -83,7 +83,7 @@ bool USMUtils::GenerateStateMachine(UObject* Instance, FSMStateMachine& StateMac
 						 * had no effect.
 						 */
 						
-						LOG_WARNING(TEXT("State machine node %s in package %s uses a reference template %s with class %s, but was expecting class %s. The package may just need to be recompiled."),
+						LD_LOG_WARNING(TEXT("State machine node %s in package %s uses a reference template %s with class %s, but was expecting class %s. The package may just need to be recompiled."),
 							*StateMachineOut.GetNodeName(), *Instance->GetName(), *TemplateName.ToString(), *TemplateInstance->GetClass()->GetName(), *StateMachineClassReference->GetName());
 
 						StateMachineClassReference = TemplateInstance->GetClass();
@@ -123,7 +123,7 @@ bool USMUtils::GenerateStateMachine(UObject* Instance, FSMStateMachine& StateMac
 						// If we don't stop here we will be in an infinite loop.
 						if (*CurrentInstancesOfClass > 1)
 						{
-							LOG_ERROR(TEXT("Attempted to generate state machine with circular referencing. This behavior is no longer allowed but can still be achieved by setting bReuseReference to true on the state machine reference node. Offending state machine: %s"), *SMInstance->GetName())
+							LD_LOG_ERROR(TEXT("Attempted to generate state machine with circular referencing. This behavior is no longer allowed but can still be achieved by setting bReuseReference to true on the state machine reference node. Offending state machine: %s"), *SMInstance->GetName())
 							FinishStateMachineGeneration(bIsTopLevel, StateMachinesGeneratingForThread, ThreadId);
 							return false;
 						}
@@ -140,7 +140,7 @@ bool USMUtils::GenerateStateMachine(UObject* Instance, FSMStateMachine& StateMac
 				USMInstance* ReferencedInstance = USMBlueprintUtils::CreateStateMachineInstanceFromTemplate(StateMachineClassReference, SMInstance->GetContext(), TemplateInstance);
 				if (ReferencedInstance == nullptr)
 				{
-					LOG_ERROR(TEXT("Could not create reference %s for use within state machine %s from package %s."), *StateMachineClassReference->GetName(), *StateMachineOut.GetNodeName(), *Instance->GetName());
+					LD_LOG_ERROR(TEXT("Could not create reference %s for use within state machine %s from package %s."), *StateMachineClassReference->GetName(), *StateMachineOut.GetNodeName(), *Instance->GetName());
 					return false;
 				}
 				
@@ -242,14 +242,14 @@ bool USMUtils::GenerateStateMachine(UObject* Instance, FSMStateMachine& StateMac
 			FSMState_Base* FromState = MappedStates.FindRef(Transition->FromGuid);
 			if (!FromState)
 			{
-				LOG_ERROR(TEXT("Critical error creating state machine %s for package %s. The transition %s could not locate the FromState using Guid %s."), *StateMachineOut.GetNodeName(), *Instance->GetName(),
+				LD_LOG_ERROR(TEXT("Critical error creating state machine %s for package %s. The transition %s could not locate the FromState using Guid %s."), *StateMachineOut.GetNodeName(), *Instance->GetName(),
 					*Transition->GetNodeName(), *Transition->FromGuid.ToString());
 				return false;
 			}
 			FSMState_Base* ToState = MappedStates.FindRef(Transition->ToGuid);
 			if (!ToState)
 			{
-				LOG_ERROR(TEXT("Critical error creating state machine %s for package %s. The transition %s could not locate the ToState using Guid %s."), *StateMachineOut.GetNodeName(), *Instance->GetName(),
+				LD_LOG_ERROR(TEXT("Critical error creating state machine %s for package %s. The transition %s could not locate the ToState using Guid %s."), *StateMachineOut.GetNodeName(), *Instance->GetName(),
 					*Transition->GetNodeName(), *Transition->ToGuid.ToString());
 				return false;
 			}

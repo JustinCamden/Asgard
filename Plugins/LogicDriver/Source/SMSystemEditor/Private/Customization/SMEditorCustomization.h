@@ -77,7 +77,7 @@ public:
 	static TSharedRef<IDetailCustomization> MakeInstance();
 
 protected:
-	TArray<TSharedPtr<FName>> AvailableDelegates;
+	TArray<TSharedPtr<FString>> AvailableDelegates;
 };
 
 class FSMNodeInstanceCustomization : public FSMBaseCustomization {

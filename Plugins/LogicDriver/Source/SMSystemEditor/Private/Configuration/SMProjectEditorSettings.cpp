@@ -13,6 +13,8 @@ USMProjectEditorSettings::USMProjectEditorSettings()
 	bConfigureNewConduitsAsTransitions = true;
 	bDisplayUpdateNotification = true;
 	InstalledVersion = "";
+	bEnableBlueprintMenuExtenders = true;
+	bEnableBlueprintToolbarExtenders = true;
 }
 
 void USMProjectEditorSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)

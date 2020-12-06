@@ -410,6 +410,7 @@ protected:
 	virtual FReply OnMouseWheel(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 	virtual FReply OnMouseButtonDoubleClick(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 	virtual FCursorReply OnCursorQuery(const FGeometry& MyGeometry, const FPointerEvent& CursorEvent) const override;
+	virtual bool ShouldSelectWordOnMouseDoubleClick() const override;
 	virtual bool IsInteractable() const override;
 	virtual bool ComputeVolatility() const override;
 	//~ End SWidget Interface

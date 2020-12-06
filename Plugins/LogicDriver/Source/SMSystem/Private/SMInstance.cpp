@@ -1,7 +1,7 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
 
 #include "SMInstance.h"
-#include "Engine/Engine.h"
+#include "Engine/NetDriver.h"
 #include "Net/UnrealNetwork.h"
 #include "SMLogging.h"
 #include "SMUtils.h"
@@ -31,7 +31,7 @@ bool USMInstance::IsTickable() const
 {
 	// Don't check CDO.
 	// On IsPendingKillOrUnreachable can cause tick lookup function to crash debug / package builds.
-	// Intermittently IsTemplate may faill in this scenario so it should be checked last.
+	// Intermittently IsTemplate may fail in this scenario so it should be checked last.
 	if (IsPendingKillOrUnreachable() || (!IsInitialized() && !bTickBeforeInitialize) || !CanEverTick() || IsTemplate())
 	{
 		return false;
@@ -39,7 +39,7 @@ bool USMInstance::IsTickable() const
 
 	UWorld* ThisWorld = GetWorld();
 
-	// Well we tried.
+	// Well, we tried.
 	if (!ThisWorld)
 	{
 		return true;
@@ -108,7 +108,7 @@ void USMInstance::Initialize(UObject* Context)
 	// Build the run-time state machine.
 	if (!USMUtils::GenerateStateMachine(this, RootStateMachine, Properties))
 	{
-		LOG_ERROR(TEXT("Error generating state machine %s. Please try recompiling the blueprint."), *GetName());
+		LD_LOG_ERROR(TEXT("Error generating state machine %s. Please try recompiling the blueprint."), *GetName());
 		return;
 	}
 
@@ -147,7 +147,7 @@ void USMInstance::Start()
 
 	if (RootStateMachine.IsActive() && RootStateMachine.GetSingleActiveState() != nullptr)
 	{
-		LOG_WARNING(TEXT("Attempted to start State Machine Instance %s when it was already running."), *GetName());
+		LD_LOG_WARNING(TEXT("Attempted to start State Machine Instance %s when it was already running."), *GetName());
 		return;
 	}
 
@@ -249,7 +249,7 @@ void USMInstance::Stop()
 
 	if (!RootStateMachine.IsActive())
 	{
-		LOG_WARNING(TEXT("Attempted to stop State Machine Instance when it was not already running."));
+		LD_LOG_WARNING(TEXT("Attempted to stop State Machine Instance when it was not already running."));
 		return;
 	}
 
@@ -661,6 +661,11 @@ FSMState_Base* USMInstance::FindStateByGuid(const FGuid& Guid) const
 	return RootStateMachine.FindState(Guid);
 }
 
+USMStateMachineInstance* USMInstance::GetRootStateMachineInstance() const
+{
+	return Cast<USMStateMachineInstance>(const_cast<FSMStateMachine&>(RootStateMachine).GetNodeInstance());
+}
+
 bool USMInstance::IsActive() const
 {
 	return bInitialized ? RootStateMachine.IsActive() : false;
@@ -718,6 +723,31 @@ UWorld* USMInstance::GetWorld() const
 	return Context ? Context->GetWorld() : nullptr;
 }
 
+int32 USMInstance::GetFunctionCallspace(UFunction* Function, FFrame* Stack)
+{
+	if (UObject* Outer = GetOuter())
+	{
+		return Outer->GetFunctionCallspace(Function, Stack);
+	}
+
+	return Super::GetFunctionCallspace(Function, Stack);
+}
+
+bool USMInstance::CallRemoteFunction(UFunction* Function, void* Parms, FOutParmRec* OutParms, FFrame* Stack)
+{
+	check(!HasAnyFlags(RF_ClassDefaultObject));
+	if (AActor* Owner = Cast<AActor>(GetOuter()))
+	{
+		UNetDriver* NetDriver = Owner->GetNetDriver();
+		if (NetDriver)
+		{
+			NetDriver->ProcessRemoteFunction(Owner, Function, Parms, OutParms, Stack, this);
+			return true;
+		}
+	}
+	return false;
+}
+
 UObject* USMInstance::GetContext() const
 {
 	return R_StateMachineContext;
@@ -772,7 +802,7 @@ void USMInstance::NotifyTransitionTaken(const FSMTransition& Transition)
 #if WITH_EDITORONLY_DATA
 	if (IsLoggingEnabled() && bLogTransitionTaken)
 	{
-		LOG_INFO(TEXT("[%s] Transition taken: %s"), *GetName(), *TransitionInfo.ToString());
+		LD_LOG_INFO(TEXT("[%s] Transition taken: %s"), *GetName(), *TransitionInfo.ToString());
 	}
 #endif
 	
@@ -788,7 +818,7 @@ void USMInstance::NotifyStateChange(FSMState_Base* ToState, FSMState_Base* FromS
 #if WITH_EDITORONLY_DATA
 	if (IsLoggingEnabled() && bLogStateChange)
 	{
-		LOG_INFO(TEXT("[%s] State change: from %s to %s"), *GetName(), *FromStateInfo.ToString(), *ToStateInfo.ToString());
+		LD_LOG_INFO(TEXT("[%s] State change: from %s to %s"), *GetName(), *FromStateInfo.ToString(), *ToStateInfo.ToString());
 	}
 #endif
 	
@@ -993,14 +1023,14 @@ bool USMInstance::CheckIsInitialized() const
 {
 	if (!IsInitialized())
 	{
-		LOG_WARNING(TEXT("Attempted to use State Machine Instance when it wasn't initialized"));
+		LD_LOG_WARNING(TEXT("Attempted to use State Machine Instance when it wasn't initialized"));
 		return false;
 	}
 
 	if (IsPendingKillOrUnreachable())
 	{
 		// This happens quite a bit in normal practice.
-		//LOG_INFO(TEXT("Attempted to use State Machine Instance when it was pending kill or unreachable"));
+		//LD_LOG_INFO(TEXT("Attempted to use State Machine Instance when it was pending kill or unreachable"));
 		return false;
 	}
 

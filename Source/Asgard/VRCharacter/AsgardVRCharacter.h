@@ -780,17 +780,21 @@ private:
 	UPROPERTY(BlueprintReadOnly, Category = "AsgardVRCharacter|Movement|PrecisionTeleport", meta = (AllowPrivateAccess = "true"))
 	EAsgardInputSource PrecisionTeleportInputSource;
 
+	/** The orientation mode for the currently active Precision Teleport/ */
+	UPROPERTY(BlueprintReadOnly, Category = "AsgardVRCharacter|Movement|PrecisionTeleport", meta = (AllowPrivateAccess = "true"))
+	EAsgardBinaryHand PrecisionTeleportOrientationMode;
+
 	/**  The orientation mode for the character when performing a Precision Teleport with the dedicated action.  */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AsgardVRCharacter|Movement|PrecisionTeleport", meta = (AllowPrivateAccess = "true"))
 	EAsgardBinaryHand PrecisionTeleportDedicatedOrientationMode;
 
-	/** The orientation mode for the character when performing a Precision Teleport with the first inferred action. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AsgardVRCharacter|Movement|PrecisionTeleport", meta = (AllowPrivateAccess = "true"))
-	EAsgardBinaryHand PrecisionTeleportInferred2OrientationMode;
-
 	/** The orientation mode for the character when performing a Precision Teleport with the second inferred action. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AsgardVRCharacter|Movement|PrecisionTeleport", meta = (AllowPrivateAccess = "true"))
 	EAsgardBinaryHand PrecisionTeleportInferred1OrientationMode;
+
+	/** The orientation mode for the character when performing a Precision Teleport with the first inferred action. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AsgardVRCharacter|Movement|PrecisionTeleport", meta = (AllowPrivateAccess = "true"))
+	EAsgardBinaryHand PrecisionTeleportInferred2OrientationMode;
 
 	/** Reference to component used to orient a Precision Teleport trace.  */
 	UPROPERTY(BlueprintReadOnly, Category = "AsgardVRCharacter|Movement|PrecisionTeleport", meta = (AllowPrivateAccess = "true"))

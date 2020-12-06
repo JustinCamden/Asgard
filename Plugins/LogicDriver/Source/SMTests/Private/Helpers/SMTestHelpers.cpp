@@ -40,7 +40,7 @@ bool FAssetHandler::CreateAsset()
 {
 	const FString PackageName = GamePath + Name;
 
-	UPackage* AssetPackage = CreatePackage(nullptr, *PackageName);
+	UPackage* AssetPackage = CreatePackage(*PackageName);
 	Package = AssetPackage;
 
 	const EObjectFlags Flags = RF_Public | RF_Standalone;

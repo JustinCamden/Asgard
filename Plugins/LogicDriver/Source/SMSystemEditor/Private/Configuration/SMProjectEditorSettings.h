@@ -72,6 +72,18 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Conduits")
 	bool bConfigureNewConduitsAsTransitions;
 
+	/**
+	 * Add all Kismet toolbar extenders to the state machine editor. This allows items from third party plugins to be visible in Logic Driver.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Plugin Compatibility")
+	bool bEnableBlueprintToolbarExtenders;
+
+	/**
+	 * Add all Kismet menu extenders to the state machine editor. This allows items from third party plugins to be visible in Logic Driver.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Plugin Compatibility")
+	bool bEnableBlueprintMenuExtenders;
+
 	// UObject
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	// ~UObject

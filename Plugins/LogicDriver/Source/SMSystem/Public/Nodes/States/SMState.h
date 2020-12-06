@@ -159,6 +159,10 @@ public:
 
 	/** This state has just been entered from a parallel state while already active. May be true only for OnStateBegin. */
 	bool HasBeenReenteredFromParallelState() const { return bReenteredByParallelState; }
+
+	/** True while the state is ending and graph execution is occurring. Prevents restarting this state when it triggers transitions while ending. */
+	bool IsStateEnding() const { return bIsStateEnding; }
+	
 protected:
 	friend struct FSMTransition;
 	void AddOutgoingTransition(FSMTransition* Transition);
@@ -174,6 +178,9 @@ protected:
 	/** True only when already active and entered from a parallel state. */
 	bool bReenteredByParallelState;
 	bool bCanExecuteLogic = true;
+
+	/** True while the state is ending and graph execution is occurring. Prevents restarting this state when it triggers transitions while ending. */
+	bool bIsStateEnding = false;
 	
 private:
 	const FSMTransition* NextTransition;

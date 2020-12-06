@@ -33,7 +33,7 @@
 
 FSMBlueprintEditor* FSMBlueprintEditorUtils::GetStateMachineEditor(UObject const* Object)
 {
-	if (!Object)
+	if (!Object || !GEditor)
 	{
 		return nullptr;
 	}

@@ -81,6 +81,8 @@ class SMSYSTEM_API USMInstance : public UObject, public FTickableGameObject, pub
 	GENERATED_BODY()
 
 public:
+	friend class USMStateMachineComponent;
+	
 	USMInstance();
 	// FTickableGameObject
 	/** The native tick is required to update the state machine. */
@@ -103,6 +105,8 @@ public:
 	virtual void BeginDestroy() override;
 	/** Custom implementation to return the Context World. */
 	virtual UWorld* GetWorld() const override;
+	virtual int32 GetFunctionCallspace(UFunction* Function, FFrame* Stack) override;
+	virtual bool CallRemoteFunction(UFunction* Function, void* Parms, FOutParmRec* OutParms, FFrame* Stack) override;
 	// ~UObject
 
 	// ISMInstanceInterface
@@ -110,6 +114,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
 	virtual UObject* GetContext() const override;
 	// ~ISMInstanceInterface
+
+	/** The component owning this instance. Will be null during initialization or if this state machine was created without a component. */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
+	USMStateMachineComponent* GetComponentOwner() const { return ComponentOwner; }
 
 	// USMStateMachineInterface
 	/** Initialize bound functions and load in the context. */
@@ -325,6 +333,10 @@ public:
 	
 	/** The root state machine which may contain nested state machines. */
 	FSMStateMachine& GetRootStateMachine() { return RootStateMachine; }
+
+	/** Return the root USMStateMachineInstance node. */
+	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
+	USMStateMachineInstance* GetRootStateMachineInstance() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Logic Driver|State Machine Instances")
 	bool IsActive() const;
@@ -549,10 +561,14 @@ protected:
 	UFUNCTION()
 	void REP_StartChanged();
 protected:
+	/** The component owning this instance. */
+	UPROPERTY()
+	USMStateMachineComponent* ComponentOwner;
+
 	/** Pointer to server object to notify of active transitions. */
 	UPROPERTY()
 	TScriptInterface<ISMStateMachineNetworkedInterface> ServerStateMachine;
-
+	
 	/** Flattened map of all node Path Guids -> Node references */
 	TMap<FGuid, FSMNode_Base*> GuidNodeMap;
 	

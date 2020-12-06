@@ -28,5 +28,17 @@ public:
 
 	static UEdGraphPin* GetThenPin(UEdGraphNode* Node);
 	static bool IsThenPin(UEdGraphPin* Pin);
+
+	/** Get menu for breaking links to specific nodes*/
+	void GetBreakLinkToSubMenuActions(UToolMenu* Menu, class UEdGraphPin* InGraphPin);
+
+	/** Get menu for jumping to specific pin links */
+	void GetJumpToConnectionSubMenuActions(UToolMenu* Menu, class UEdGraphPin* InGraphPin);
+
+	/** Get menu for straightening links to specific nodes*/
+	void GetStraightenConnectionToSubMenuActions(UToolMenu* Menu, UEdGraphPin* InGraphPin) const;
+
+	/** Get the destination pin for a straighten operation */
+	static UEdGraphPin* GetAndResetStraightenDestinationPin();
 };
 

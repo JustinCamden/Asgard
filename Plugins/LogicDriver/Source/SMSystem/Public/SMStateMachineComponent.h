@@ -146,6 +146,10 @@ protected:
 	/** Called after the state machine has initialized either locally or by replication. */
 	virtual void PostInitialize();
 
+	/** Called after the state machine has initialized either locally or by replication. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Logic Driver|State Machine Components")
+	void OnPostInitialize();
+
 	/** Configure instance specific network properties. */
 	virtual void ConfigureInstanceNetworkSettings();
 

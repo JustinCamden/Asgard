@@ -120,6 +120,9 @@ public:
 	/** Retrieve nodes of only transitions. */
 	const TArray<FSMTransition*>& GetTransitions() const { return Transitions; }
 
+	/** Returns only the original entry states. */
+	const TSet<FSMState_Base*>& GetEntryStates() const;
+	
 	/** The entry state of this state machine. Returns either the temporary or default. Possible to be greater than 0 when loading from temporary parallel states. */
 	TArray<FSMState_Base*> GetInitialStates() const;
 

@@ -723,6 +723,11 @@ FCursorReply SSMEditableText::OnCursorQuery(const FGeometry& MyGeometry, const F
 	}
 }
 
+bool SSMEditableText::ShouldSelectWordOnMouseDoubleClick() const
+{
+	return true;
+}
+
 bool SSMEditableText::IsInteractable() const
 {
 	return IsEnabled();

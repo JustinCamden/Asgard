@@ -445,25 +445,23 @@ TSharedPtr<SVerticalBox> SGraphNode_StateNode::CreateContentBox()
 		}
 	}
 	
-	if(bDisplayTitle)
-	{
-		Content->AddSlot()
-			.AutoHeight()
-			[
-				SAssignNew(InlineEditableText, SInlineEditableTextBlock)
-				.Style(FEditorStyle::Get(), "Graph.StateNode.NodeTitleInlineEditableText")
-				.Text(NodeTitle.Get(), &SNodeTitle::GetHeadTitle)
-				.OnVerifyTextChanged(this, &SGraphNode_StateNode::OnVerifyNameTextChanged)
-				.OnTextCommitted(this, &SGraphNode_StateNode::OnNameTextCommited)
-				.IsReadOnly(this, &SGraphNode_StateNode::IsNameReadOnly)
-				.IsSelected(this, &SGraphNode_StateNode::IsSelectedExclusively)
-			];
-		Content->AddSlot()
-			.AutoHeight()
-			[
-				NodeTitle.ToSharedRef()
-			];
-	}
+	Content->AddSlot()
+		.AutoHeight()
+		[
+			SAssignNew(InlineEditableText, SInlineEditableTextBlock)
+			.Style(FEditorStyle::Get(), "Graph.StateNode.NodeTitleInlineEditableText")
+			.Text(NodeTitle.Get(), &SNodeTitle::GetHeadTitle)
+			.OnVerifyTextChanged(this, &SGraphNode_StateNode::OnVerifyNameTextChanged)
+			.OnTextCommitted(this, &SGraphNode_StateNode::OnNameTextCommited)
+			.IsReadOnly(this, &SGraphNode_StateNode::IsNameReadOnly)
+			.IsSelected(this, &SGraphNode_StateNode::IsSelectedExclusively)
+			.Visibility(bDisplayTitle ? EVisibility::Visible : EVisibility::Collapsed)
+		];
+	Content->AddSlot()
+		.AutoHeight()
+		[
+			NodeTitle.ToSharedRef()
+		];
 	
 	PropertyWidgets.Reset();
 	

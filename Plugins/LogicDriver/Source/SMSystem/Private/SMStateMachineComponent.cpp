@@ -352,6 +352,9 @@ void USMStateMachineComponent::PostInitialize()
 	// Configure network settings after initialization.
 	ConfigureInstanceNetworkSettings();
 
+	// Allow child blueprint components to run specific initalize logic.
+	OnPostInitialize();
+	
 	OnStateMachineInitializedEvent.Broadcast(R_Instance);
 }
 
@@ -640,7 +643,8 @@ void USMStateMachineComponent::DoInitialize(UObject* Context)
 
 		bCanInstanceNetworkTick = R_Instance->CanEverTick();
 		R_Instance->SetRegisterTick(bLetInstanceManageTick);
-
+		R_Instance->ComponentOwner = this;
+		
 		PostInitialize();
 	}
 }

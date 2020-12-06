@@ -19,6 +19,7 @@
 #include "K2Node_ActorBoundEvent.h"
 #include "K2Node_Variable.h"
 #include "K2Node_SetFieldsInStruct.h"
+#include "Kismet2/KismetEditorUtilities.h"
 
 
 #define LOCTEXT_NAMESPACE "SMGraphK2Schema"
@@ -177,24 +178,24 @@ void USMGraphK2Schema::GetContextMenuActions(class UToolMenu* Menu, class UGraph
 							"BreakLinkTo",
 							LOCTEXT("BreakLinkTo", "Break Link To..."),
 							LOCTEXT("BreakSpecificLinks", "Break a specific link..."),
-							FNewToolMenuDelegate::CreateUObject((UEdGraphSchema_K2*const)this, &UEdGraphSchema_K2::GetBreakLinkToSubMenuActions, const_cast<UEdGraphPin*>(InGraphPin)));
+							FNewToolMenuDelegate::CreateUObject((USMGraphK2Schema*const)this, &USMGraphK2Schema::GetBreakLinkToSubMenuActions, const_cast<UEdGraphPin*>(InGraphPin)));
 
 						Section.AddSubMenu(
 							"JumpToConnection",
 							LOCTEXT("JumpToConnection", "Jump to Connection..."),
 							LOCTEXT("JumpToSpecificConnection", "Jump to specific connection..."),
-							FNewToolMenuDelegate::CreateUObject((UEdGraphSchema_K2*const)this, &UEdGraphSchema_K2::GetJumpToConnectionSubMenuActions, const_cast<UEdGraphPin*>(InGraphPin)));
+							FNewToolMenuDelegate::CreateUObject((USMGraphK2Schema*const)this, &USMGraphK2Schema::GetJumpToConnectionSubMenuActions, const_cast<UEdGraphPin*>(InGraphPin)));
 
 						Section.AddSubMenu(
 							"StraightenConnection",
 							LOCTEXT("StraightenConnection", "Straighten Connection To..."),
 							LOCTEXT("StraightenConnection_Tip", "Straighten a specific connection"),
-							FNewToolMenuDelegate::CreateUObject(this, &UEdGraphSchema_K2::GetStraightenConnectionToSubMenuActions, const_cast<UEdGraphPin*>(InGraphPin)));
+							FNewToolMenuDelegate::CreateUObject(this, &USMGraphK2Schema::GetStraightenConnectionToSubMenuActions, const_cast<UEdGraphPin*>(InGraphPin)));
 					}
 					else
 					{
-						((UEdGraphSchema_K2*const)this)->GetBreakLinkToSubMenuActions(Menu, const_cast<UEdGraphPin*>(InGraphPin));
-						((UEdGraphSchema_K2*const)this)->GetJumpToConnectionSubMenuActions(Menu, const_cast<UEdGraphPin*>(InGraphPin));
+						((USMGraphK2Schema*const)this)->GetBreakLinkToSubMenuActions(Menu, const_cast<UEdGraphPin*>(InGraphPin));
+						((USMGraphK2Schema*const)this)->GetJumpToConnectionSubMenuActions(Menu, const_cast<UEdGraphPin*>(InGraphPin));
 
 						UEdGraphPin* Pin = InGraphPin->LinkedTo[0];
 						FText PinName = Pin->GetDisplayName();
@@ -492,6 +493,186 @@ UEdGraphPin* USMGraphK2Schema::GetThenPin(UEdGraphNode* Node)
 bool USMGraphK2Schema::IsThenPin(UEdGraphPin* Pin)
 {
 	return Pin && Pin->PinName == PN_Then && Pin->PinType.PinCategory == PC_Exec;
+}
+
+void USMGraphK2Schema::GetBreakLinkToSubMenuActions(UToolMenu* Menu, UEdGraphPin* InGraphPin)
+{
+	FToolMenuSection& Section = Menu->FindOrAddSection("EdGraphSchemaPinActions");
+
+	// Make sure we have a unique name for every entry in the list
+	TMap< FString, uint32 > LinkTitleCount;
+
+	// Add all the links we could break from
+	for (TArray<class UEdGraphPin*>::TConstIterator Links(InGraphPin->LinkedTo); Links; ++Links)
+	{
+		UEdGraphPin* Pin = *Links;
+		FText Title = Pin->GetOwningNode()->GetNodeTitle(ENodeTitleType::ListView);
+		FString TitleString = Title.ToString();
+		const FText PinDisplayName = Pin->GetDisplayName();
+		if (!PinDisplayName.IsEmpty())
+		{
+			TitleString = FString::Printf(TEXT("%s (%s)"), *TitleString, *PinDisplayName.ToString());
+
+			// Add name of connection if possible
+			FFormatNamedArguments Args;
+			Args.Add(TEXT("NodeTitle"), Title);
+			Args.Add(TEXT("PinName"), PinDisplayName);
+			Title = FText::Format(LOCTEXT("BreakDescPin", "{NodeTitle} ({PinName})"), Args);
+		}
+
+		uint32& Count = LinkTitleCount.FindOrAdd(TitleString);
+
+		FText Description;
+		FFormatNamedArguments Args;
+		Args.Add(TEXT("NodeTitle"), Title);
+		Args.Add(TEXT("NumberOfNodes"), Count);
+
+		if (Count == 0)
+		{
+			Description = FText::Format(LOCTEXT("BreakDesc", "Break Link to {NodeTitle}"), Args);
+		}
+		else
+		{
+			Description = FText::Format(LOCTEXT("BreakDescMulti", "Break Link to {NodeTitle} ({NumberOfNodes})"), Args);
+		}
+		++Count;
+
+		Section.AddMenuEntry(NAME_None, Description, Description, FSlateIcon(), FUIAction(
+			FExecuteAction::CreateUObject(this, &UEdGraphSchema_K2::BreakSinglePinLink, const_cast<UEdGraphPin*>(InGraphPin), *Links)));
+	}
+}
+
+void USMGraphK2Schema::GetJumpToConnectionSubMenuActions(UToolMenu* Menu, UEdGraphPin* InGraphPin)
+{
+	FToolMenuSection& Section = Menu->FindOrAddSection("EdGraphSchemaPinActions");
+
+	// Make sure we have a unique name for every entry in the list
+	TMap< FString, uint32 > LinkTitleCount;
+
+	// Add all the links we could break from
+	for (const UEdGraphPin* PinLink : InGraphPin->LinkedTo)
+	{
+		FText Title = PinLink->GetOwningNode()->GetNodeTitle(ENodeTitleType::ListView);
+		FString TitleString = Title.ToString();
+		const FText PinDisplayName = PinLink->GetDisplayName();
+		if (!PinDisplayName.IsEmpty())
+		{
+			TitleString = FString::Printf(TEXT("%s (%s)"), *TitleString, *PinDisplayName.ToString());
+
+			// Add name of connection if possible
+			FFormatNamedArguments Args;
+			Args.Add(TEXT("NodeTitle"), Title);
+			Args.Add(TEXT("PinName"), PinDisplayName);
+			Title = FText::Format(LOCTEXT("JumpToDescPin", "{NodeTitle} ({PinName})"), Args);
+		}
+
+		uint32& Count = LinkTitleCount.FindOrAdd(TitleString);
+
+		FText Description;
+		FFormatNamedArguments Args;
+		Args.Add(TEXT("NodeTitle"), Title);
+		Args.Add(TEXT("NumberOfNodes"), Count);
+
+		if (Count == 0)
+		{
+			Description = FText::Format(LOCTEXT("JumpDesc", "Jump to {NodeTitle}"), Args);
+		}
+		else
+		{
+			Description = FText::Format(LOCTEXT("JumpDescMulti", "Jump to {NodeTitle} ({NumberOfNodes})"), Args);
+		}
+		++Count;
+
+		Section.AddMenuEntry(NAME_None, Description, Description, FSlateIcon(), FUIAction(
+			FExecuteAction::CreateStatic(&FKismetEditorUtilities::BringKismetToFocusAttentionOnPin, PinLink)));
+	}
+}
+
+// todo: this is a long way off ideal, but we can't pass context from our menu items onto the graph panel implementation
+// It'd be better to be able to pass context through to menu/ui commands
+namespace { UEdGraphPin* StraightenDestinationPin = nullptr; }
+UEdGraphPin* USMGraphK2Schema::GetAndResetStraightenDestinationPin()
+{
+	UEdGraphPin* Temp = StraightenDestinationPin;
+	StraightenDestinationPin = nullptr;
+	return Temp;
+}
+
+void USMGraphK2Schema::GetStraightenConnectionToSubMenuActions(UToolMenu* Menu, UEdGraphPin* InGraphPin) const
+{
+	const FUIAction* StraightenConnectionsUIAction = Menu->Context.GetActionForCommand(FGraphEditorCommands::Get().StraightenConnections);
+	if (!ensure(StraightenConnectionsUIAction))
+	{
+		return;
+	}
+
+	// Make sure we have a unique name for every entry in the list
+	TMap<FString, uint32> LinkTitleCount;
+
+	TMap<UEdGraphNode*, TArray<UEdGraphPin*>> NodeToPins;
+
+	for (UEdGraphPin* Pin : InGraphPin->LinkedTo)
+	{
+		UEdGraphNode* Node = Pin->GetOwningNode();
+		if (Node)
+		{
+			NodeToPins.FindOrAdd(Node).Add(Pin);
+		}
+	}
+
+	FToolMenuSection& Section = Menu->FindOrAddSection("EdGraphSchemaPinActions");
+	Section.AddMenuEntry(FGraphEditorCommands::Get().StraightenConnections,
+		LOCTEXT("StraightenAllConnections", "All Connected Pins"),
+		TAttribute<FText>(), FSlateIcon(NAME_None, NAME_None, NAME_None));
+
+	for (const TPair<UEdGraphNode*, TArray<UEdGraphPin*>>& Pair : NodeToPins)
+	{
+		for (UEdGraphPin* Pin : Pair.Value)
+		{
+			FText Title = Pair.Key->GetNodeTitle(ENodeTitleType::ListView);
+			FString TitleString = Title.ToString();
+			const FText PinDisplayName = Pin->GetDisplayName();
+			if (!PinDisplayName.IsEmpty())
+			{
+				TitleString = FString::Printf(TEXT("%s (%s)"), *TitleString, *PinDisplayName.ToString());
+
+				// Add name of connection if possible
+				FFormatNamedArguments Args;
+				Args.Add(TEXT("NodeTitle"), Title);
+				Args.Add(TEXT("PinName"), PinDisplayName);
+				Title = FText::Format(LOCTEXT("StraightenToDescPin", "{NodeTitle} ({PinName})"), Args);
+			}
+			uint32& Count = LinkTitleCount.FindOrAdd(TitleString);
+
+			FText Description;
+			FFormatNamedArguments Args;
+			Args.Add(TEXT("NodeTitle"), Title);
+			Args.Add(TEXT("NumberOfNodes"), Count);
+
+			if (Count == 0)
+			{
+				Description = FText::Format(LOCTEXT("StraightenDesc", "Straighten connection to {NodeTitle}"), Args);
+			}
+			else
+			{
+				Description = FText::Format(LOCTEXT("StraightendDescMulti", "Straighten connection to {NodeTitle} ({NumberOfNodes})"), Args);
+			}
+			++Count;
+
+			Section.AddMenuEntry(
+				NAME_None,
+				Description,
+				Description,
+				FSlateIcon(),
+				FToolMenuExecuteAction::CreateLambda([=](const FToolMenuContext& Context) {
+				if (const FUIAction* UIAction = Context.GetActionForCommand(FGraphEditorCommands::Get().StraightenConnections))
+				{
+					StraightenDestinationPin = Pin;
+					UIAction->ExecuteAction.Execute();
+				}
+			}));
+		}
+	}
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -22,6 +22,23 @@ void USMStateMachineInstance::GetAllStateInstances(TArray<USMStateInstance_Base*
 	}
 }
 
+void USMStateMachineInstance::GetEntryStates(TArray<USMStateInstance_Base*>& EntryStates) const
+{
+	if (FSMStateMachine* StateMachineOwner = (FSMStateMachine*)GetOwningNode())
+	{
+		const TSet<FSMState_Base*>& OriginalEntryStates = StateMachineOwner->GetEntryStates();
+		EntryStates.Reset(OriginalEntryStates.Num());
+		
+		for (FSMState_Base* EntryState : OriginalEntryStates)
+		{
+			if (USMStateInstance_Base* NodeInstance = Cast<USMStateInstance_Base>(EntryState->GetNodeInstance()))
+			{
+				EntryStates.Add(NodeInstance);
+			}
+		}
+	}
+}
+
 const FSMNode_Base* USMStateMachineInstance::GetOwningNodeContainer() const
 {
 	if (FSMStateMachine* StateMachineOwner = (FSMStateMachine*)GetOwningNode())

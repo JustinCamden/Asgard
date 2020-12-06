@@ -1,6 +1,4 @@
 // Copyright Recursoft LLC 2019-2020. All Rights Reserved.
-#pragma once
-
 #include "SMNodeInstance.h"
 #include "CoreMinimal.h"
 #include "SMInstance.h"

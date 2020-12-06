@@ -217,6 +217,20 @@ bool FNodeInstanceMethodsTest::RunTest(const FString& Parameters)
 	FSMState_Base* InitialState = StateMachineInstance->GetRootStateMachine().GetSingleInitialState();
 	USMStateInstance_Base* NodeInstance = CastChecked<USMStateInstance_Base>(InitialState->GetNodeInstance());
 	InitialState->bAlwaysUpdate = true; // Needed since we are manually switching states later.
+
+	{
+		// Test root and entry nodes.
+		
+		USMStateMachineInstance* RootStateMachineInstance = StateMachineInstance->GetRootStateMachineInstance();
+		TestNotNull("Root node not null", RootStateMachineInstance);
+		TestEqual("Root node discoverable", RootStateMachineInstance, Cast<USMStateMachineInstance>(StateMachineInstance->GetRootStateMachine().GetNodeInstance()));
+
+		TArray<USMStateInstance_Base*> EntryStates;
+		RootStateMachineInstance->GetEntryStates(EntryStates);
+		check(EntryStates.Num() == 1);
+
+		TestEqual("Entry states discoverable", EntryStates[0], NodeInstance);
+	}
 	
 	TestEqual("Correct state machine", NodeInstance->GetStateMachineInstance(), StateMachineInstance);
 	TestEqual("Guids correct", NodeInstance->GetGuid(), InitialState->GetGuid());

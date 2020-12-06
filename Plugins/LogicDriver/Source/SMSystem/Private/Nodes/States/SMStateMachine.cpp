@@ -49,6 +49,12 @@ void FSMStateMachine::ProcessStates(float DeltaSeconds, bool bForceTransitionEva
 		// Always start the state before attempting a transition.
 		if (!CurrentState->IsActive() || CurrentState->HasBeenReenteredFromParallelState())
 		{
+			// prevents repeated reentry if this state was ending and triggered a transition which led to processing.
+			if (CurrentState->IsStateEnding())
+			{
+				continue;
+			}
+
 			if (!CurrentState->IsActive() || !CurrentState->HasBeenReenteredFromParallelState() || CurrentState->bAllowParallelReentry)
 			{
 				CurrentState->StartState();
@@ -145,6 +151,7 @@ void FSMStateMachine::ProcessStates(float DeltaSeconds, bool bForceTransitionEva
 			else
 			{
 				// No transition found, perform general update.
+				ProcessingStates.Add(CurrentState);
 				CurrentState->UpdateState(DeltaSeconds);
 			}
 		}
@@ -206,7 +213,7 @@ bool FSMStateMachine::ProcessTransition(FSMTransition* Transition, const FSMNetw
 		if (!ActiveStates.Contains(ToState))
 		{
 			const FString InstanceName = GetOwningInstance() ? GetOwningInstance()->GetName() : "Unknown";
-			LOG_ERROR(TEXT("Current state not set for state machine node '%s'. The package '%s' may be getting cleaned up. Check your code for proper UE4 memory management."), *GetNodeName(), *InstanceName);
+			LD_LOG_ERROR(TEXT("Current state not set for state machine node '%s'. The package '%s' may be getting cleaned up. Check your code for proper UE4 memory management."), *GetNodeName(), *InstanceName);
 			return false;
 		}
 		
@@ -332,6 +339,16 @@ void FSMStateMachine::RemoveActiveState(FSMState_Base* State, bool bReplicate)
 	State->EndState(0.f);
 	ActiveStates.Remove(State);
 
+	if (USMInstance* Instance = GetOwningInstance())
+	{
+		Instance->NotifyStateChange(nullptr, State);
+	}
+
+	if (IsReferencedByInstance)
+	{
+		IsReferencedByInstance->NotifyStateChange(nullptr, State);
+	}
+	
 	if (bReplicate && IsNetworked() && State)
 	{
 		FSMNetworkedTransaction Transaction(GetGuid(), State->GetGuid(), ESMTransactionType::SM_State);
@@ -693,6 +710,16 @@ void FSMStateMachine::AddTemporaryInitialState(FSMState_Base* State)
 void FSMStateMachine::ClearTemporaryInitialStates()
 {
 	TemporaryEntryStates.Empty();
+}
+
+const TSet<FSMState_Base*>& FSMStateMachine::GetEntryStates() const
+{
+	if (ReferencedStateMachine)
+	{
+		return ReferencedStateMachine->GetRootStateMachine().GetEntryStates();
+	}
+
+	return EntryStates;
 }
 
 TArray<FSMState_Base*> FSMStateMachine::GetInitialStates() const

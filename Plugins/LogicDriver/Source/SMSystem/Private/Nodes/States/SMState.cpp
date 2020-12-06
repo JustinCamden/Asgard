@@ -449,6 +449,7 @@ bool FSMState::EndState(float DeltaSeconds, const FSMTransition* TransitionToTak
 
 	if (CanExecuteLogic())
 	{
+		bIsStateEnding = true;
 		EndStateGraphEvaluator.Execute();
 		for (USMNodeInstance* StackInstance : StackNodeInstances)
 		{
@@ -457,6 +458,7 @@ bool FSMState::EndState(float DeltaSeconds, const FSMTransition* TransitionToTak
 				StateInstance->OnStateEnd();
 			}
 		}
+		bIsStateEnding = false;
 	}
 
 	return true;
