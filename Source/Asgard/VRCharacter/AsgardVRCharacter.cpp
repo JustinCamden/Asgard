@@ -19,6 +19,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogAsgardVRCharacter, Log, All);
 DECLARE_CYCLE_STAT(TEXT("AsgardVRCharacter PrecisionTeleportLocation"), STAT_ASGARD_VRCharacterPrecisionTeleportLocation, STATGROUP_ASGARD_VRCharacter);
 DECLARE_CYCLE_STAT(TEXT("AsgardVRCharacter SmoothTeleportToLocation"), STAT_ASGARD_VRCharacterSmoothTeleportToLocation, STATGROUP_ASGARD_VRCharacter);
 DECLARE_CYCLE_STAT(TEXT("AsgardVRCharacter SmoothTeleportToRotation"), STAT_ASGARD_VRCharacterSmoothTeleportToRotation, STATGROUP_ASGARD_VRCharacter);
+DECLARE_CYCLE_STAT(TEXT("AsgardVRCharacter SmoothTeleportToRotation"), STAT_ASGARD_VRCharacterSmoothTeleportToLocationAndRotation, STATGROUP_ASGARD_VRCharacter);
 
 // Console variable setup so we can enable and disable debugging from the console
 // Draw teleport debug
@@ -142,14 +143,21 @@ void AAsgardVRCharacter::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	if (bIsTeleportingToLocation)
 	{
-		if (CurrentTeleportToLocationMode >= EAsgardTeleportMode::SmoothRate)
+		if (CurrentTeleportToLocationMode == EAsgardTeleportMode::Smooth)
 		{
-			UpdateSmoothTeleportToLocation(DeltaSeconds);
+			if (bIsTeleportingToRotation)
+			{
+
+			}
+			else
+			{
+				UpdateSmoothTeleportToLocation(DeltaSeconds);
+			}
 		}
 	}
 	else if (bIsTeleportingToRotation)
 	{
-		if (CurrentTeleportToRotationMode >= EAsgardTeleportMode::SmoothRate)
+		if (CurrentTeleportToRotationMode == EAsgardTeleportMode::Smooth)
 		{
 			UpdateSmoothTeleportToRotation(DeltaSeconds);
 		}
@@ -423,7 +431,7 @@ void AAsgardVRCharacter::SetSmoothFlightOrientationMode(EAsgardFlightOrientation
 	return;
 }
 
-bool AAsgardVRCharacter::TeleportToLocation(const FVector& GoalLocation, EAsgardTeleportMode TeleportMode)
+bool AAsgardVRCharacter::TeleportToLocation(const FVector& GoalLocation, EAsgardTeleportMode TeleportMode, bool bSmoothTeleportConstantTime)
 {
 	// Cache teleport variables
 	TeleportStartLocation = GetVRLocation();
@@ -459,13 +467,13 @@ bool AAsgardVRCharacter::TeleportToLocation(const FVector& GoalLocation, EAsgard
 			checkf(SmoothTeleportToLocationSpeed > 0.0f,
 				TEXT("Invalid SmoothTeleportToLocationSpeed! Must be > 0.0! (AsgardVRCharacter, Value %f, TeleportToLocation)"),
 				SmoothTeleportToLocationSpeed);
-			if (CurrentTeleportToLocationMode == EAsgardTeleportMode::SmoothRate)
+			if (bSmoothTeleportConstantTime)
 			{
-				TeleportToLocationSmoothMultiplier = 1.0f / ((TeleportGoalLocation - TeleportStartLocation).Size() / SmoothTeleportToLocationSpeed);
+				TeleportToLocationSmoothMultiplier = 1.0f / SmoothTeleportToLocationSpeed;
 			}
 			else
 			{
-				TeleportToLocationSmoothMultiplier = 1.0f / SmoothTeleportToLocationSpeed;
+				TeleportToLocationSmoothMultiplier = 1.0f / ((TeleportGoalLocation - TeleportStartLocation).Size() / SmoothTeleportToLocationSpeed);
 			}
 			TeleportToLocationSmoothProgress = 0.0f;
 			SetActorEnableCollision(false);
@@ -478,7 +486,7 @@ bool AAsgardVRCharacter::TeleportToLocation(const FVector& GoalLocation, EAsgard
 	return bTeleportToLocationSucceeded;
 }
 
-bool AAsgardVRCharacter::TeleportToRotation(const FRotator& GoalRotation, EAsgardTeleportMode TeleportMode)
+bool AAsgardVRCharacter::TeleportToRotation(const FRotator& GoalRotation, EAsgardTeleportMode TeleportMode, bool bSmoothTeleportConstantTime)
 {
 	// Cache teleport variables
 	CurrentTeleportToRotationMode = TeleportMode;
@@ -508,13 +516,13 @@ bool AAsgardVRCharacter::TeleportToRotation(const FRotator& GoalRotation, EAsgar
 			checkf(SmoothTeleportToRotationSpeed > 0.0f,
 				TEXT("Invalid SmoothTeleportToRotationSpeed! Must be > 0.0! (AsgardVRCharacter, Value %f, TeleportToRotation)"),
 				SmoothTeleportToRotationSpeed);
-			if (CurrentTeleportToRotationMode == EAsgardTeleportMode::SmoothRate)
+			if (bSmoothTeleportConstantTime)
 			{
-				TeleportToRotationSmoothMultiplier = 1.0f / ((TeleportGoalRotation - TeleportStartRotation).GetNormalized().Yaw / SmoothTeleportToRotationSpeed);
+				TeleportToRotationSmoothMultiplier = 1.0f / SmoothTeleportToRotationSpeed;
 			}
 			else
 			{
-				TeleportToRotationSmoothMultiplier = 1.0f / SmoothTeleportToRotationSpeed;
+				TeleportToRotationSmoothMultiplier = 1.0f / ((TeleportGoalRotation - TeleportStartRotation).GetNormalized().Yaw / SmoothTeleportToRotationSpeed);
 			}
 			TeleportToRotationSmoothProgress = 0.0f;
 			bIsTeleportingToRotation = true;
@@ -524,7 +532,7 @@ bool AAsgardVRCharacter::TeleportToRotation(const FRotator& GoalRotation, EAsgar
 	return true;
 }
 
-bool AAsgardVRCharacter::TeleportToLocationAndRotation(const FVector& GoalLocation, const FRotator& GoalRotation, EAsgardTeleportMode TeleportMode)
+bool AAsgardVRCharacter::TeleportToLocationAndRotation(const FVector& GoalLocation, const FRotator& GoalRotation, EAsgardTeleportMode TeleportMode, bool bSmoothTeleportLocationConstantTime, bool bSmoothTeleportRotationConstantTime)
 {
 	// Cache teleport variables
 	TeleportStartLocation = GetVRLocation();
@@ -572,16 +580,24 @@ bool AAsgardVRCharacter::TeleportToLocationAndRotation(const FVector& GoalLocati
 			checkf(SmoothTeleportToRotationSpeed > 0.0f,
 				TEXT("Invalid SmoothTeleportToRotationSpeed! Must be > 0.0! (AsgardVRCharacter, Value %f, TeleportToLocationAndRotation)"),
 				SmoothTeleportToRotationSpeed);
-			if (CurrentTeleportToLocationMode == EAsgardTeleportMode::SmoothRate)
+			if (bSmoothTeleportLocationConstantTime)
 			{
-				TeleportToLocationSmoothMultiplier = 1.0f / ((TeleportGoalLocation - TeleportStartLocation).Size() / SmoothTeleportToLocationSpeed);
-				TeleportToRotationSmoothMultiplier = 1.0f / ((TeleportGoalRotation - TeleportStartRotation).GetNormalized().Yaw / SmoothTeleportToRotationSpeed);
+				TeleportToLocationSmoothMultiplier = 1.0f / SmoothTeleportToLocationSpeed;
 			}
 			else
 			{
-				TeleportToLocationSmoothMultiplier = 1.0f / SmoothTeleportToLocationSpeed;
+				TeleportToLocationSmoothMultiplier = 1.0f / ((TeleportGoalLocation - TeleportStartLocation).Size() / SmoothTeleportToLocationSpeed);
+			}
+
+			if (bSmoothTeleportRotationConstantTime)
+			{
 				TeleportToRotationSmoothMultiplier = 1.0f / SmoothTeleportToRotationSpeed;
 			}
+			else
+			{
+				TeleportToRotationSmoothMultiplier = 1.0f / ((TeleportGoalRotation - TeleportStartRotation).GetNormalized().Yaw / SmoothTeleportToRotationSpeed);
+			}
+
 			TeleportToLocationSmoothProgress = 0.0f;
 			TeleportToRotationSmoothProgress = 0.0f;
 			SetActorEnableCollision(false);
@@ -733,7 +749,6 @@ void AAsgardVRCharacter::UpdateSmoothTeleportToLocation(float DeltaSeconds)
 	// Continue interpolation
 	if (TeleportToLocationSmoothProgress < 1.0f)
 	{
-
 		SetActorLocation(FMath::Lerp(
 			GetTeleportLocation(TeleportStartLocation),
 			GetTeleportLocation(TeleportGoalLocation),
@@ -751,13 +766,6 @@ void AAsgardVRCharacter::UpdateSmoothTeleportToLocation(float DeltaSeconds)
 			nullptr,
 			ETeleportType::ResetPhysics);
 		SetActorEnableCollision(true);
-
-		// Update variables for Smooth teleport rotation if appropriate
-		if (bIsTeleportingToRotation && TeleportToRotationDefaultMode >= EAsgardTeleportMode::SmoothRate)
-		{
-			TeleportStartRotation = GetVRRotation();
-		}
-
 		bIsTeleportingToLocation = false;
 		OnTeleportToLocationFinished.Broadcast();
 	}
@@ -776,7 +784,7 @@ void AAsgardVRCharacter::UpdateSmoothTeleportToRotation(float DeltaSeconds)
 		1.0f);
 
 	// Continue interpolation
-	if (TeleportToLocationSmoothProgress < 1.0f)
+	if (TeleportToRotationSmoothProgress < 1.0f)
 	{
 		SetActorRotationVR(FMath::Lerp(
 			TeleportStartRotation, 
@@ -791,6 +799,93 @@ void AAsgardVRCharacter::UpdateSmoothTeleportToRotation(float DeltaSeconds)
 		bIsTeleportingToRotation = false;
 		OnTeleportToRotationFinished.Broadcast();
 	}
+}
+
+void AAsgardVRCharacter::UpdateSmoothTeleportToLocationAndRotation(float DeltaSeconds)
+{
+	// Profile this function since it is a potentially expensive operation
+	SCOPE_CYCLE_COUNTER(STAT_ASGARD_VRCharacterSmoothTeleportToLocationAndRotation);
+
+	// Location interpolation
+	if (TeleportToLocationSmoothProgress < 1.0f)
+	{
+		TeleportToLocationSmoothProgress = FMath::Min
+		(TeleportToLocationSmoothProgress + (TeleportToLocationSmoothMultiplier * DeltaSeconds),
+			1.0f);
+
+		// Update interpolation
+		if (TeleportToLocationSmoothProgress < 1.0f)
+		{
+			SetActorLocation(FMath::Lerp(
+				GetTeleportLocation(TeleportStartLocation),
+				GetTeleportLocation(TeleportGoalLocation),
+				TeleportToLocationSmoothProgress),
+				false,
+				nullptr,
+				ETeleportType::TeleportPhysics);
+		}
+
+		// Finish interpolation
+		else
+		{
+			SetActorLocation(GetTeleportLocation(TeleportGoalLocation),
+				false,
+				nullptr,
+				ETeleportType::ResetPhysics);
+		}
+	}
+
+	// Lock interpolation
+	else
+	{
+		SetActorLocation(GetTeleportLocation(TeleportGoalLocation),
+			false,
+			nullptr,
+			ETeleportType::ResetPhysics);
+	}
+
+	// Rotation interpolation
+	if (TeleportToRotationSmoothProgress < 1.0f)
+	{
+		// Progress interpolation
+		TeleportToRotationSmoothProgress = FMath::Min
+		(TeleportToRotationSmoothProgress + (TeleportToRotationSmoothMultiplier * DeltaSeconds),
+			1.0f);
+
+
+		// Update interpolation
+		if (TeleportToRotationSmoothProgress < 1.0f)
+		{
+			SetActorRotationVR(FMath::Lerp(
+				TeleportStartRotation,
+				TeleportGoalRotation,
+				TeleportToRotationSmoothProgress));
+		}
+
+		// Finish interpolation
+		else
+		{
+			SetActorRotationVR(TeleportGoalRotation);
+		}
+	}
+
+	// Lock interpolation
+	else
+	{
+		SetActorRotationVR(TeleportGoalRotation);
+	}
+
+	// Both interpolations finished
+	if (TeleportToLocationSmoothProgress >= 1.0f && TeleportToRotationSmoothProgress >= 1.0f)
+	{
+		SetActorEnableCollision(true);
+		bIsTeleportingToLocation = false;
+		bIsTeleportingToRotation = false;
+		OnTeleportToLocationFinished.Broadcast();
+		OnTeleportToRotationFinished.Broadcast();
+	}
+
+	return;
 }
 
 bool AAsgardVRCharacter::TraceForTeleportLocation(
@@ -885,17 +980,17 @@ void AAsgardVRCharacter::TeleportTurn()
 		{
 			case EAsgard2DAxis::Right:
 			{
-				TeleportToRotation(GetVRRotation() + FRotator(0.0f, TeleportTurnAngleInterval, 0.0f), TeleportToRotationDefaultMode);
+				TeleportToRotation(GetVRRotation() + FRotator(0.0f, TeleportTurnAngleInterval, 0.0f), TeleportToRotationDefaultMode, bSmoothTeleportToRotationDefaultConstantTime);
 				break;
 			}
 			case EAsgard2DAxis::Left:
 			{
-				TeleportToRotation(GetVRRotation() + FRotator(0.0f, -TeleportTurnAngleInterval, 0.0f), TeleportToRotationDefaultMode);
+				TeleportToRotation(GetVRRotation() + FRotator(0.0f, -TeleportTurnAngleInterval, 0.0f), TeleportToRotationDefaultMode, bSmoothTeleportToRotationDefaultConstantTime);
 				break;
 			}
 			case EAsgard2DAxis::Backward:
 			{
-				TeleportToRotation(GetVRRotation() + FRotator(0.0f, 180.0f, 0.0f), TeleportToRotationDefaultMode);
+				TeleportToRotation(GetVRRotation() + FRotator(0.0f, 180.0f, 0.0f), TeleportToRotationDefaultMode, bSmoothTeleportToRotationDefaultConstantTime);
 				break;
 			}
 			default:
@@ -1021,7 +1116,7 @@ bool AAsgardVRCharacter::TeleportInDirection(
 	// If trace was successful
 	if (bTraceSuccessful)
 	{
-		return TeleportToLocation(TeleportGoal, TeleportMode);
+		return TeleportToLocation(TeleportGoal, TeleportMode, bSmoothTeleportToLocationDefaultConstantTime);
 	}
 
 	return false;
@@ -1631,7 +1726,7 @@ void AAsgardVRCharacter::StopPrecisionTeleport()
 	bIsPrecisionTeleportActive = false;
 	if (bIsPrecisionTeleportLocationValid && CanTeleport())
 	{
-		TeleportToLocation(PrecisionTeleportLocation, TeleportToLocationDefaultMode);
+		TeleportToLocation(PrecisionTeleportLocation, TeleportToLocationDefaultMode, bSmoothTeleportToLocationDefaultConstantTime);
 	}
 
 	return;

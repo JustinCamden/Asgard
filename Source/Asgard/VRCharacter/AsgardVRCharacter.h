@@ -176,8 +176,7 @@ public:
 	* The method of teleportation used for teleporting to a location.
 	* Fade: The camera will fade out, the player will be placed at the goal location, and then the camera will fade back in.
 	* Instant: Character is instantly placed at their goal location.
-	* SmoothRate: Character is smoothly interpolated to their goal location at a given rate.
-	* SmoothTime: Character is smoothly interpolated to their goal location over a given time.
+	* Smooth : Character is smoothly interpolated to their goal location at the rate (or time) given by SmoothTeleportToLocationSpeed.
 	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AsgardVRCharacter|Movement|Teleport")
 	EAsgardTeleportMode TeleportToLocationDefaultMode;
@@ -186,8 +185,7 @@ public:
 	* The method of teleportation used for teleporting to a specific Rotation.
 	* Fade: The camera will fade out, the player will be placed at the goal Rotation, and then the camera will fade back in.
 	* Instant: Character is instantly placed at their goal Rotation.
-	* SmoothRate: Character is smoothly interpolated to their goal Rotation at a given rate.
-	* SmoothTime: Character is smoothly interpolated to their goal Rotation over a given time.
+	* Smooth : Character is smoothly interpolated to their goal rotation at the rate (or time) given by SmoothTeleportToRotationSpeed.
 	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AsgardVRCharacter|Movement|Teleport")
 	EAsgardTeleportMode TeleportToRotationDefaultMode;
@@ -202,19 +200,33 @@ public:
 
 	/**
 	* The speed of the character when teleporting to a location in a Smooth teleport mode.
-	* SmoothRate: Treated as centimeters per second.
-	* SmoothTime: Treated treated as how long each teleport will take.
+	* If SmoothTeleportConstantTime is true, this is treated as centimeters per second.
+	* Else, this is treated as how long each teleport will take.
 	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AsgardVRCharacter|Movement|Teleport", meta = (ClampMin = "0.01"))
 	float SmoothTeleportToLocationSpeed;
 
 	/**
 	* The speed of the character when teleporting to a rotation in a Smooth teleport mode.
-	* SmoothRate: Treated as degrees per second.
-	* SmoothTime: Treated treated as how long each teleport will take.
+	* If SmoothTeleportConstantTime is true, this is treated as degrees per second.
+	* Else, this is treated as how long each teleport will take.
 	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AsgardVRCharacter|Movement|Teleport", meta = (ClampMin = "0.01"))
 	float SmoothTeleportToRotationSpeed;
+
+	/**
+	* Determines whether SmoothTeleportToLocationSpeed is interpreted as a constant time by default.
+	* If false, it will be considered a rate of centimeters per second.
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AsgardVRCharacter|Movement|Teleport", meta = (ClampMin = "0.01"))
+	bool bSmoothTeleportToLocationDefaultConstantTime;
+
+	/**
+	* Determines whether SmoothTeleportToRotationSpeed is interpreted as a constant time by default.
+	* If false, it will be considered a rate of degrees per second.
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AsgardVRCharacter|Movement|Teleport", meta = (ClampMin = "0.01"))
+	bool bSmoothTeleportToRotationDefaultConstantTime;
 
 
 	// ---------------------------------------------------------
@@ -601,6 +613,7 @@ private:
 	/** Updates for Smooth teleports. */
 	void UpdateSmoothTeleportToLocation(float DeltaSeconds);
 	void UpdateSmoothTeleportToRotation(float DeltaSeconds);
+	void UpdateSmoothTeleportToLocationAndRotation(float DeltaSeconds);
 
 	/**
 	* Traces an arc and attempts to obtain a valid teleport location.
@@ -618,17 +631,23 @@ private:
 	/**
 	* Attempts to teleport to the target location, using the given teleport mode.
 	* Returns whether the initial request succeeeded.
+	* @param bSmoothTeleportConstantTime During a smooth teleport, determines whether the teleport will take a constant amount of time.
 	*/
-	bool TeleportToLocation(const FVector& GoalLocation, EAsgardTeleportMode TeleportMode);
+	bool TeleportToLocation(const FVector& GoalLocation, EAsgardTeleportMode TeleportMode, bool bSmoothTeleportContstantTime);
 
-	/** Teleports to the target rotation, using the given teleport mode. */
-	bool TeleportToRotation(const FRotator& GoalRotation, EAsgardTeleportMode TeleportMode);
+	/*
+	* Teleports to the target rotation, using the given teleport mode.
+	* @param bSmoothTeleportConstantTime During a smooth teleport, determines whether the teleport will take a constant amount of time.
+	*/
+	bool TeleportToRotation(const FRotator& GoalRotation, EAsgardTeleportMode TeleportMode, bool bSmoothTeleportConstantTime);
 
 	/**
 	* Attempts to teleport to the target location, then rotation, using the given teleport mode.
 	* Returns whether the initial teleport to location request succeeeded.
+	* @param bSmoothTeleportLocationConstantTime During a smooth teleport, determines whether the teleport to location will take a constant amount of time.
+	* @param bSmoothTeleportRotationConstantTime During a smooth teleport, determines whether the teleport to rocation will take a constant amount of time.
 	*/
-	bool TeleportToLocationAndRotation(const FVector& GoalLocation, const FRotator& GoalRotation, EAsgardTeleportMode TeleportMode);
+	bool TeleportToLocationAndRotation(const FVector& GoalLocation, const FRotator& GoalRotation, EAsgardTeleportMode TeleportMode, bool bSmoothTeleportLocationConstantTime, bool bSmoothTeleportRotationConstantTime);
 
 	/** Attempts to Teleport To in the direction indicate by the TurnInputVector. */
 	void TeleportTurn();
