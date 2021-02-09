@@ -173,7 +173,7 @@ public:
 	float TeleportFadeInTime;
 
 	/**
-	* The method of teleportation used for teleporting to a location.
+	* The default method of teleportation used for teleporting to a location.
 	* Fade: The camera will fade out, the player will be placed at the goal location, and then the camera will fade back in.
 	* Instant: Character is instantly placed at their goal location.
 	* Smooth : Character is smoothly interpolated to their goal location at the rate (or time) given by SmoothTeleportToLocationSpeed.
@@ -182,7 +182,7 @@ public:
 	EAsgardTeleportMode TeleportToLocationDefaultMode;
 
 	/**
-	* The method of teleportation used for teleporting to a specific Rotation.
+	* The default method of teleportation used for teleporting to a specific Rotation.
 	* Fade: The camera will fade out, the player will be placed at the goal Rotation, and then the camera will fade back in.
 	* Instant: Character is instantly placed at their goal Rotation.
 	* Smooth : Character is smoothly interpolated to their goal rotation at the rate (or time) given by SmoothTeleportToRotationSpeed.
